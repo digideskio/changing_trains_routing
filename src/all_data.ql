@@ -1,0 +1,10 @@
+node[name~"{{name}}",i][railway~"^(stop|halt|station)$"]->.stop;
+( way[railway=platform](around.stop:100)[bus!~yes];
+  way[public_transport=platform](around.stop:100)[bus!~yes];
+  rel[railway=platform](around.stop:100)[bus!~yes];
+  rel[public_transport=platform](around.stop:100)[bus!~yes];
+  way[railway=platform][name~"{{name}}",i];
+  rel[railway=platform][name~"{{name}}",i]; );
+(._;node[highway](around:100)->.n;way[highway](around:100););
+(._;>;);
+out geom;
