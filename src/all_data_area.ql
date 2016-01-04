@@ -1,4 +1,4 @@
-area[name~"{{area}}",i];
+area[name~"{{area}}",i]->.a;
 node(area.a)[name~"{{name}}",i][railway~"^(stop|halt|station)$"]->.stop;
 ( way[railway=platform](around.stop:100)[bus!~yes];
   way[public_transport=platform](around.stop:100)[bus!~yes];

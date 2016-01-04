@@ -17,92 +17,14 @@
 */
 
 #include <algorithm>
-#include <iomanip>
 #include <iostream>
-#include <list>
-#include <map>
-#include <set>
-#include <sstream>
-#include <string>
-#include <vector>
 
-#include <cerrno>
-#include <cmath>
+#include <cstdlib>
 #include <cstring>
-#include <cstdio>
-#include <ctime>
+
 #include "expat_justparse_interface.h"
+#include "read_input.h"
 
-//#include "read_input.h"
-
-
-typedef unsigned long long Id_Type;
-
-
-enum Object_Type { Node_t, Way_t, Relation_t };
-
-  
-struct Node
-{
-  Node() : id(0), lat(100.0), lon(200.0) {}
-  
-  Id_Type id;
-  double lat;
-  double lon;
-  std::vector< std::pair< std::string, std::string > > tags;
-};
-
-
-struct Way
-{
-  Id_Type id;
-  std::vector< Id_Type > nds;
-  std::vector< std::pair< std::string, std::string > > tags;
-};
-
-
-struct Relation
-{
-  struct Member
-  {
-    Id_Type ref;
-    Object_Type type;
-    std::string role;
-  };
-
-  Id_Type id;
-  std::vector< Member > members;
-  std::vector< std::pair< std::string, std::string > > tags;
-};
-
-
-template< typename Object >
-bool has_kv(const Object& obj, const std::string& key, const std::string& value)
-{
-  for (std::vector< std::pair< std::string, std::string > >::const_iterator it = obj.tags.begin();
-       it != obj.tags.end(); ++it)
-  {
-    if (it->first == key && it->second == value)
-      return true;
-  }
-  return false;
-}
-
-
-struct Parsing_State
-{
-  std::vector< std::pair< std::string, std::string > > tags;
-  
-  std::vector< Node > nodes;
-  
-  std::vector< Way > ways;
-  std::vector< Id_Type > nds;
-  
-  std::vector< Relation > relations;
-  std::vector< Relation::Member > members;
-  
-  std::vector< Node > implicit_nodes;
-};
 
 Parsing_State* g_state;
 
@@ -245,109 +167,9 @@ const Parsing_State& read_osm()
   // read the XML input
   parse(stdin, start, end);
   
-//   for (std::map< uint32, Way* >::const_iterator it(current_data.ways.begin());
-//       it != current_data.ways.end(); ++it)
-//   {
-//     std::vector< Pending_Nd >& nds = pending_nds[it->first];
-//     for (std::vector< Pending_Nd >::const_iterator it2 = nds.begin(); it2 != nds.end(); ++it2)
-//     {
-//       std::map< uint64, Node* >::const_iterator nit = current_data.nodes.find(it2->ref);
-//       if (nit != current_data.nodes.end())
-// 	it->second->nds.push_back(nit->second);
-//       else if (it2->lat < 100.0 && it2->lon < 200.0)
-//       {
-// 	Node* node = new Node();
-// 	node->lat = it2->lat;
-// 	node->lon = it2->lon;
-// 	current_data.nodes.insert(std::make_pair(it2->ref, node));
-// 	it->second->nds.push_back(node);
-//       }
-//       else
-//       {
-// 	std::cerr<<"Error: Node "<<it2->ref<<" referenced by way "<<it->first
-// 	    <<" but not contained in the source file.\n";
-// 	// better throw an exception
-//       }
-//     }
-//   }
-//   
-//   for (std::map< uint32, Relation* >::const_iterator it(current_data.relations.begin());
-//       it != current_data.relations.end(); ++it)
-//   {
-//     std::vector< RelMember >& members(pending_members[it->first]);
-//     for (std::vector< RelMember >::const_iterator it2(members.begin());
-//         it2 != members.end(); ++it2)
-//     {
-//       if (it2->type == RelMember::NODE)
-//       {
-// 	std::map< uint64, Node* >::const_iterator nit(current_data.nodes.find(it2->ref));
-// 	if (nit == current_data.nodes.end())
-// 	{
-// 	  std::cerr<<"Error: Node "<<it2->ref<<" referenced by relation "<<it->first
-// 	  <<" but not contained in the source file.\n";
-// 	  // throw an exception
-// 	}
-// 	else
-// 	  it->second->members.push_back(std::make_pair(nit->second, it2->role));
-//       }
-//       else if (it2->type == RelMember::WAY)
-//       {
-// 	std::map< uint32, Way* >::const_iterator nit(current_data.ways.find(it2->ref));
-// 	if (nit == current_data.ways.end())
-// 	{
-// 	  std::cerr<<"Error: Way "<<it2->ref<<" referenced by relation "<<it->first
-// 	  <<" but not contained in the source file.\n";
-// 	  // throw an exception
-// 	}
-// 	else
-// 	  it->second->members.push_back(std::make_pair(nit->second, it2->role));
-//       }
-//       if (it2->type == RelMember::RELATION)
-//       {
-// 	std::map< uint32, Relation* >::const_iterator nit(current_data.relations.find(it2->ref));
-// 	if (nit == current_data.relations.end())
-// 	{
-// 	  std::cerr<<"Error: Relation "<<it2->ref<<" referenced by relation "<<it->first
-// 	  <<" but not contained in the source file.\n";
-// 	  // throw an exception
-// 	}
-// 	else
-// 	  it->second->members.push_back(std::make_pair(nit->second, it2->role));
-//       }
-//     }
-//   }
+  std::sort(g_state->nodes.begin(), g_state->nodes.end());
+  std::sort(g_state->ways.begin(), g_state->ways.end());
+  std::sort(g_state->relations.begin(), g_state->relations.end());
 
   return global_state();
-}
-
-
-int main()
-{
-  const Parsing_State& state = read_osm();
-  
-  for (std::vector< Way >::const_iterator it = state.ways.begin(); it != state.ways.end(); ++it)
-  {
-    if (has_kv(*it, "railway", "platform") ||
-        (has_kv(*it, "public_transport", "platform") && !has_kv(*it, "bus", "yes")))
-    {
-      std::cout<<it->id<<'\n';
-      for (std::vector< std::pair< std::string, std::string > >::const_iterator it2 = it->tags.begin();
-          it2 != it->tags.end(); ++it2)
-	std::cout<<"  "<<it2->first<<" = "<<it2->second<<'\n';
-    }
-  }
-  
-  for (std::vector< Relation >::const_iterator it = state.relations.begin(); it != state.relations.end(); ++it)
-  {
-    if (has_kv(*it, "railway", "platform") ||
-        (has_kv(*it, "public_transport", "platform") && !has_kv(*it, "bus", "yes")))
-    {
-      std::cout<<it->id<<'\n';
-      for (std::vector< std::pair< std::string, std::string > >::const_iterator it2 = it->tags.begin();
-          it2 != it->tags.end(); ++it2)
-	std::cout<<"  "<<it2->first<<" = "<<it2->second<<'\n';
-    }
-  }
-  
-  return 0;
 }
