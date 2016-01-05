@@ -1,3 +1,7 @@
+#ifndef READ_INPUT
+#define READ_INPUT
+
+
 #include <string>
 #include <vector>
 
@@ -80,3 +84,5 @@ bool has_kv(const Object& obj, const std::string& key, const std::string& value)
 
 
 const Parsing_State& read_osm();
+
+#endif

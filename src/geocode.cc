@@ -1,39 +1,8 @@
-#include "read_input.h"
+#include "geocode.h"
+
 
 #include <cmath>
 #include <iostream>
-
-
-struct Coord
-{
-  Coord(double lat_, double lon_) : lat(lat_), lon(lon_) {}
-  
-  double lat;
-  double lon;
-};
-
-
-struct Geometry
-{
-  Geometry(const Node& node);
-  Geometry(const Way& way, const Parsing_State& data);
-  Geometry(const Relation& relation, const Parsing_State& data);
-  
-  std::vector< std::vector< Coord > > coords;
-  
-  Coord bbox_center();
-};
-
-
-struct Way_Reference
-{
-  Way_Reference(const Way& way, const Coord& point, const Parsing_State& data);
-  Way_Reference(const Relation& relation, const Coord& point, const Parsing_State& data);
-  
-  Id_Type way_ref;
-  unsigned int index;
-  double pos;
-};
 
 
 Geometry::Geometry(const Node& node)
@@ -224,46 +193,4 @@ Way_Reference::Way_Reference(const Relation& relation, const Coord& point, const
       }
     }
   }
-}
-
-
-int main(int argc, char* args[])
-{
-  const Parsing_State& state = read_osm();
-  
-  for (std::vector< Way >::const_iterator it = state.ways.begin(); it != state.ways.end(); ++it)
-  {
-    if (has_kv(*it, "railway", "platform") ||
-        (has_kv(*it, "public_transport", "platform") && !has_kv(*it, "bus", "yes")))
-    {
-      std::cout<<it->id<<'\n';
-      Geometry geom(*it, state);
-      Coord center = geom.bbox_center();
-      std::cout<<"  "<<center.lat<<' '<<center.lon<<'\n';
-      for (std::vector< std::pair< std::string, std::string > >::const_iterator it2 = it->tags.begin();
-          it2 != it->tags.end(); ++it2)
-	std::cout<<"  "<<it2->first<<" = "<<it2->second<<'\n';
-      Way_Reference ref(*it, center, state);
-      std::cout<<"  "<<ref.way_ref<<' '<<ref.index<<' '<<ref.pos * 111111.1<<'\n';
-    }
-  }
-  
-  for (std::vector< Relation >::const_iterator it = state.relations.begin(); it != state.relations.end(); ++it)
-  {
-    if (has_kv(*it, "railway", "platform") ||
-        (has_kv(*it, "public_transport", "platform") && !has_kv(*it, "bus", "yes")))
-    {
-      std::cout<<it->id<<'\n';
-      Geometry geom(*it, state);
-      Coord center = geom.bbox_center();
-      std::cout<<"  "<<center.lat<<' '<<center.lon<<'\n';
-      for (std::vector< std::pair< std::string, std::string > >::const_iterator it2 = it->tags.begin();
-          it2 != it->tags.end(); ++it2)
-	std::cout<<"  "<<it2->first<<" = "<<it2->second<<'\n';
-      Way_Reference ref(*it, center, state);
-      std::cout<<"  "<<ref.way_ref<<' '<<ref.index<<' '<<ref.pos * 111111.1<<'\n';
-    }
-  }
-  
-  return 0;
 }
