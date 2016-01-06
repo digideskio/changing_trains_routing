@@ -14,11 +14,46 @@
     DrawLatLonMarkers.draw_point(51.2, 7.2);
     DrawLatLonMarkers.adjust_map();
   }
+  
+  function show_station(station)
+  {
+    if (!station)
+      alert("Internal error: station data is empty.");
+    if (station.name)
+      alert("station has name " + station.name);
+    if (station.station_id)
+      alert("station has id " + station.station_id);
+  }
     
   function load_data()
   {
-    DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
-    DrawLatLonMarkers.adjust_map();
+    var station_name = "";
+    var station_name_field = document.getElementById("station_name");
+    if (station_name_field && station_name_field.value)
+      station_name = station_name_field.value;
+    
+    function xhreqCallback()
+    {
+      if (this.readyState == 4)
+      {
+        if (this.status == 200)
+          show_station(JSON.parse(this.responseText));
+        else
+          alert(this.statusText);
+      }
+          
+      DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
+      DrawLatLonMarkers.adjust_map();
+    }
+          
+    var xhreq = new XMLHttpRequest();
+    if (xhreq == null)
+        alert("Browser not supported (the browser doesn't have XMLHttpRequest). "
+            + "Please use instead e.g. a recent Firefox version.");
+    
+    xhreq.open("GET", "/adam/api/matrix?name=" + station_name, true);
+    xhreq.onreadystatechange = xhreqCallback;
+    xhreq.send(null);    
   }
 
   </script>
