@@ -1,0 +1,41 @@
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" lang="en"></meta>
+  <title>Umsteigematrix im Bahnhof</title>
+  <script src="http://openlayers.org/api/2.13.1/OpenLayers.js"></script> 
+  <script src="http://overpass-api.de/OpenStreetMap.js"></script>
+  <script src="draw_latlon_markers.js"></script>
+  <script type="text/javascript">
+  
+  function init()
+  {
+    DrawLatLonMarkers.init_map(45, -110, 10);
+    DrawLatLonMarkers.draw_point(50.8, 7.1);
+    DrawLatLonMarkers.draw_point(51.2, 7.2);
+    DrawLatLonMarkers.adjust_map();
+  }
+    
+  function load_data()
+  {
+    DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
+    DrawLatLonMarkers.adjust_map();
+  }
+
+  </script>
+</head>
+<body onload="init()">
+
+<div style="position:absolute; top:0%; left:0%; height:100%; width:30%; z-index:1">
+    <div style="height:20%">
+        <form action="#" acceptCharset="UTF-8">
+            <input type="text" id="station_name" value=""></input>
+            <input type="submit" value="Fetch data" onclick="load_data()"></input>
+        </form>  
+        <strong id="status">&nbsp;</strong>
+    </div>
+    <div id="textual_results" style="height:90%; overflow-y:scroll"></div>
+</div>
+<div id="map" class="smallmap" style="position:absolute; top:0%; left:30%; height:100%; width:70%; z-index:1"></div>
+
+</body>
+</html>
