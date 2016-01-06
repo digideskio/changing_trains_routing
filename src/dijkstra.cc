@@ -67,6 +67,8 @@ struct Route_Ref
 
 struct Route
 {
+  const static double max_route_length = 180.0;
+  
   Route(const Route_Ref& start_, const Route_Ref& end_, double value_) : start(start_), end(end_), value(value_) {}
   
   Route_Ref start;
@@ -278,12 +280,42 @@ struct Closed_Node
 };
 
 
+std::vector< const Routing_Edge* > resolve_edges
+    (const Routing_Node& node, const std::map< const Routing_Node*, Closed_Node >& final_tree)
+{
+  std::vector< const Routing_Edge* > result;
+  
+  const Routing_Node* current_node = &node;
+  std::map< const Routing_Node*, Closed_Node >::const_iterator f_it = final_tree.find(current_node);
+  double last_value = Route::max_route_length;
+  
+  while (f_it != final_tree.end() && f_it->second.value < last_value)
+  {
+//     std::cout<<f_it->first->id<<' '<<f_it->second.value<<'\n';
+    result.push_back(f_it->second.arrived_from);
+    last_value = f_it->second.value;
+    if (!f_it->second.arrived_from)
+      break;
+    if (f_it->second.arrived_from->start == current_node)
+      current_node = f_it->second.arrived_from->end;
+    else
+      current_node = f_it->second.arrived_from->start;
+    f_it = final_tree.find(current_node);
+  }
+  
+  std::reverse(result.begin(), result.end());
+  return result;
+}
+
+
 void eval_edge_for_destinations(const Routing_Edge& edge, const std::vector< Route_Ref >& destinations,
-    const Route_Ref& origin, double start_value, double end_value, std::vector< Route >& routes)
+    const Route_Ref& origin, double start_value, double end_value,
+    const std::map< const Routing_Node*, Closed_Node >& final_tree,
+    std::vector< Route >& routes)
 {
   for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
   {
-    if (it->edge == &edge && routes[std::distance(destinations.begin(), it)].value == 180.0)
+    if (it->edge == &edge && routes[std::distance(destinations.begin(), it)].value == Route::max_route_length)
     {
       Route route(origin, *it, 0);
       
@@ -291,12 +323,12 @@ void eval_edge_for_destinations(const Routing_Edge& edge, const std::vector< Rou
       if (start_value + proportionate_valuation_ < end_value + edge.valuation - proportionate_valuation_)
       {
 	route.value = start_value + proportionate_valuation_;
-	//route.edges.swap(resolve_edges(...));
+	resolve_edges(*it->edge->start, final_tree).swap(route.edges);
       }
       else
       {
 	route.value = end_value + edge.valuation - proportionate_valuation_;
-	//route.edges.swap(resolve_edges(...));
+	resolve_edges(*it->edge->end, final_tree).swap(route.edges);
       }
       route.edges.push_back(&edge);
       routes[std::distance(destinations.begin(), it)] = route;
@@ -313,7 +345,7 @@ Route_Tree::Route_Tree
     if (it->edge == origin.edge && it->index == origin.index)
       routes.push_back(Route(origin, *it, fabs(it->pos - origin.pos)));
     else
-      routes.push_back(Route(origin, *it, 180.0));
+      routes.push_back(Route(origin, *it, Route::max_route_length));
   }
   
   std::map< const Routing_Node*, Closed_Node > final_tree;
@@ -344,7 +376,8 @@ Route_Tree::Route_Tree
 	if (f_it == final_tree.end())
 	  open_nodes.push_back(Open_Node((*it)->end, *it, current.value + (*it)->valuation));
 	else
-	  eval_edge_for_destinations(**it, destinations, origin, current.value, f_it->second.value, routes);
+	  eval_edge_for_destinations(**it, destinations, origin, current.value, f_it->second.value,
+				     final_tree, routes);
       }
       else if ((*it)->end == current.node)
       {
@@ -352,7 +385,8 @@ Route_Tree::Route_Tree
 	if (f_it == final_tree.end())
 	  open_nodes.push_back(Open_Node((*it)->start, *it, current.value + (*it)->valuation));
 	else
-	  eval_edge_for_destinations(**it, destinations, origin, f_it->second.value, current.value, routes);
+	  eval_edge_for_destinations(**it, destinations, origin, f_it->second.value, current.value,
+				     final_tree, routes);
       }
     }
   }
