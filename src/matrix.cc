@@ -105,7 +105,7 @@ std::vector< Route_Ref > build_destinations(const Parsing_State& data, const Rou
 }
 
 
-Coord position_of_ref(const Route_Ref& ref, const Routing_Data& routing_data)
+Coord position_of_ref(const Route_Ref& ref)
 {
   if (!ref.edge)
     return Coord(0, 0);
@@ -124,12 +124,86 @@ Coord position_of_ref(const Route_Ref& ref, const Routing_Data& routing_data)
 }
 
 
+std::string to_json(const Coord& coord)
+{
+  std::ostringstream result;
+  result<<"{\"lat\":"<<std::fixed<<std::setprecision(7)<<coord.lat
+      <<",\"lon\":"<<std::fixed<<std::setprecision(7)<<coord.lon<<"}";
+  return result.str();
+}
+
+
+std::string full_trace(const Route& route)
+{
+  std::string result = to_json(position_of_ref(route.start));
+  
+  if (route.edges.size() > 1)
+  {
+    if (route.edges[0]->trace.back() == route.edges[1]->trace.front()
+        || route.edges[0]->trace.back() == route.edges[1]->trace.back())
+    {
+      for (unsigned int i = route.start.index + 1; i < route.edges[0]->trace.size(); ++i)
+	result += "," + to_json(route.edges[0]->trace[i]);
+    }
+    else
+    {
+      for (int i = route.start.index; i >= 0; --i)
+	result += "," + to_json(route.edges[0]->trace[i]);
+    }
+    
+    for (unsigned int j = 1; j < route.edges.size()-1; ++j)
+    {
+      if (route.edges[j]->trace.front() == route.edges[j-1]->trace.front()
+          || route.edges[j]->trace.front() == route.edges[j-1]->trace.back())
+      {
+        for (unsigned int i = 1; i < route.edges[j]->trace.size(); ++i)
+	  result += "," + to_json(route.edges[j]->trace[i]);
+      }
+      else
+      {
+        for (int i = route.edges[j]->trace.size()-2; i >= 0; --i)
+	  result += "," + to_json(route.edges[j]->trace[i]);
+      }
+    }
+    
+    unsigned int j = route.edges.size()-1;    
+    if (route.edges[j]->trace.front() == route.edges[j-1]->trace.front()
+        || route.edges[j]->trace.front() == route.edges[j-1]->trace.back())
+    {
+      for (unsigned int i = 1; i < route.end.index; ++i)
+	result += "," + to_json(route.edges[j]->trace[i]);
+    }
+    else
+    {
+      for (unsigned int i = route.edges[j]->trace.size()-2; i > route.end.index; --i)
+	result += "," + to_json(route.edges[j]->trace[i]);
+    }
+  }
+  else if (!route.edges.empty())
+  {
+    const Routing_Edge& edge = *route.edges[0];
+    if (route.start.index < route.end.index)
+    {
+      for (unsigned int i = route.start.index + 1; i <= route.end.index; ++i)
+	result += "," + to_json(edge.trace[i]);
+    }
+    else if (route.start.index > route.end.index)
+    {
+      for (unsigned int i = route.end.index; i > route.start.index; --i)
+	result += "," + to_json(edge.trace[i]);
+    }
+  }
+  
+  result += "," + to_json(position_of_ref(route.end));
+  return result;
+}
+
+
 int main(int argc, char* args[])
 {
   std::cout<<"Content-type: application/json\n\n";
   
   std::map< std::string, std::string > fields = decode_cgi_to_plain(cgi_get_to_text());
-  fields["name"] = "Troisdorf";
   std::map< std::string, std::string >::const_iterator name_it = fields.find("name");
   if (name_it == fields.end())
   {
@@ -162,16 +236,30 @@ int main(int argc, char* args[])
     "\"name\":\""<<name_it->second<<"\","
     "\"station_id\":\""<<station_id<<"\","
     "\"gates\":[";
+  
   for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
   {
     if (it != destinations.begin())
       std::cout<<",";
-    Coord dest_pos = position_of_ref(*it, routing_data);
+    Coord dest_pos = position_of_ref(*it);
     std::cout<<"{"
       "\"ref\":\""<<it->label<<"\","
       "\"lat\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lat<<","
-      "\"lon\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lon<<
-    "}";
+      "\"lon\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lon<<","
+      "\"connections\":[";
+      
+    Route_Tree tree(routing_data, *it, destinations);
+    for (std::vector< Route >::const_iterator r_it = tree.routes.begin(); r_it != tree.routes.end(); ++r_it)
+    {
+      if (r_it != tree.routes.begin())
+	std::cout<<",";
+      std::cout<<"{"
+        "\"to\":\""<<r_it->end.label<<"\","
+	"\"cost\":\""<<std::fixed<<std::setprecision(7)<<r_it->value<<"\","
+	"\"trace\":["<<full_trace(*r_it)<<"]}";
+    }
+
+    std::cout<<"]}";
   }
   std::cout<<"]"
   "}\n";

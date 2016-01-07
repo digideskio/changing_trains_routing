@@ -11,6 +11,8 @@ struct Coord
   
   double lat;
   double lon;
+  
+  bool operator==(const Coord& rhs) const { return lat == rhs.lat && lon == rhs.lon; }
 };
 
 

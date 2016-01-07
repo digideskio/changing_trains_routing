@@ -69,8 +69,11 @@ var DrawLatLonMarkers = function()
         points.push(point);
       }
     }
-    feature = new OpenLayers.Feature.Vector(new OpenLayers.Geometry.LineString(points), null, trace_style);
-    layer_markers.addFeatures([feature]);
+    if (points.length > 0)
+    {
+      feature = new OpenLayers.Feature.Vector(new OpenLayers.Geometry.LineString(points), null, trace_style);
+      layer_markers.addFeatures([feature]);
+    }
   }
   
   

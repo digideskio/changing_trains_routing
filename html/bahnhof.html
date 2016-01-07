@@ -9,9 +9,57 @@
   
   function init()
   {
-    DrawLatLonMarkers.init_map(52, 10, 9);
+    DrawLatLonMarkers.init_map(52, 10, 8);
     //DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
   }
+
+  
+  function closure_show_trace(trace, station)
+  {
+    var trace_ = trace;
+    var station_ = station;
+        
+    function handler(event)
+    {
+      DrawLatLonMarkers.clear_map();
+      for (var i = 0; i < station.gates.length; ++i)
+      {
+        if (station.gates[i].lat && station.gates[i].lon)
+          DrawLatLonMarkers.draw_point(station.gates[i].lat, station.gates[i].lon);
+      }
+      DrawLatLonMarkers.draw_trace(trace_);
+    }
+       
+    return handler;
+  }
+
+  
+  function closure_show_tree(gate, station)
+  {
+    var gate_ = gate;
+    var station_ = station;
+        
+    function handler(event)
+    {
+      DrawLatLonMarkers.clear_map();
+      for (var i = 0; i < station.gates.length; ++i)
+      {
+        if (station.gates[i].lat && station.gates[i].lon)
+          DrawLatLonMarkers.draw_point(station.gates[i].lat, station.gates[i].lon);
+      }
+      if (gate_.connections)
+      {
+        for (var j = 0; j < gate_.connections.length; ++j)
+        {
+          if (gate_.connections[j].trace)
+            DrawLatLonMarkers.draw_trace(gate_.connections[j].trace);
+        }
+      }
+    }
+       
+    return handler;
+  }
+  
   
   function show_station(station)
   {
@@ -39,7 +87,7 @@
     
     if (!station.gates)
     {
-      alert("Internal error: station has go gate data.");
+      alert("Internal error: station has no gate data.");
       return;
     }
     
@@ -51,8 +99,43 @@
       xml_node.setAttribute("href", "#");
       if (gate && gate.ref)
         xml_node.appendChild(document.createTextNode(gate.ref));
+      xml_node.addEventListener("click",
+      {
+        handleEvent: closure_show_tree(gate, station)
+      }, false);
       text_area.appendChild(xml_node);
       text_area.appendChild(document.createElement("br"));
+      
+      if (gate.connections)
+      {
+        for (var j = 0; j < gate.connections.length; ++j)
+        {
+          text_area.appendChild(document.createTextNode(" -> "));
+          
+          var xml_node = document.createElement("a");
+          xml_node.setAttribute("href", "#");
+          if (gate.connections[j] && gate.connections[j].to)
+            xml_node.appendChild(document.createTextNode(gate.connections[j].to));
+          if (gate.connections[j].trace)
+          {
+            xml_node.addEventListener("click",
+            {
+              handleEvent: closure_show_trace(gate.connections[j].trace, station)
+            }, false);
+          }
+          text_area.appendChild(xml_node);
+          
+          if (gate.connections[j].cost)
+          {
+            if (gate.connections[j].cost == 180.0)
+              text_area.appendChild(document.createTextNode(": not connected"));
+            else
+              text_area.appendChild(document.createTextNode(": " + Math.round(gate.connections[j].cost * 111111.111)));
+          }
+          
+          text_area.appendChild(document.createElement("br"));   
+        }
+      }
       
       if (gate.lat && gate.lon)
         DrawLatLonMarkers.draw_point(gate.lat, gate.lon);

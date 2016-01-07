@@ -11,7 +11,7 @@ struct Routing_Node;
 
 struct Routing_Edge
 {
-  Routing_Edge() : start(0), end(0), valuation(0) {}
+  Routing_Edge() : valuation(0), start(0), end(0) {}
   
   std::vector< Coord > trace;
   double valuation;
