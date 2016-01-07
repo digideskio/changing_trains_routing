@@ -9,20 +9,55 @@
   
   function init()
   {
-    DrawLatLonMarkers.init_map(45, -110, 10);
-    DrawLatLonMarkers.draw_point(50.8, 7.1);
-    DrawLatLonMarkers.draw_point(51.2, 7.2);
-    DrawLatLonMarkers.adjust_map();
+    DrawLatLonMarkers.init_map(52, 10, 9);
+    //DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
   }
   
   function show_station(station)
   {
     if (!station)
+    {
       alert("Internal error: station data is empty.");
+      return;
+    }
+      
+    var text_area = document.getElementById("textual_results");
+    if (!text_area)
+    {
+      alert("Internal error: no target for text output found.");
+      return;
+    }
+    
+    DrawLatLonMarkers.clear_map();
+    while (text_area.hasChildNodes())
+      text_area.removeChild(text_area.lastChild);
+    
+    var xml_node = document.createElement("h2");
     if (station.name)
-      alert("station has name " + station.name);
-    if (station.station_id)
-      alert("station has id " + station.station_id);
+      xml_node.appendChild(document.createTextNode(station.name));
+    text_area.appendChild(xml_node);
+    
+    if (!station.gates)
+    {
+      alert("Internal error: station has go gate data.");
+      return;
+    }
+    
+    for (var i = 0; i < station.gates.length; ++i)
+    {
+      var gate = station.gates[i];
+      
+      var xml_node = document.createElement("a");
+      xml_node.setAttribute("href", "#");
+      if (gate && gate.ref)
+        xml_node.appendChild(document.createTextNode(gate.ref));
+      text_area.appendChild(xml_node);
+      text_area.appendChild(document.createElement("br"));
+      
+      if (gate.lat && gate.lon)
+        DrawLatLonMarkers.draw_point(gate.lat, gate.lon);
+    }
+    DrawLatLonMarkers.adjust_map();
   }
     
   function load_data()
@@ -40,10 +75,7 @@
           show_station(JSON.parse(this.responseText));
         else
           alert(this.statusText);
-      }
-          
-      DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
-      DrawLatLonMarkers.adjust_map();
+      }          
     }
           
     var xhreq = new XMLHttpRequest();

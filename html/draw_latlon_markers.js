@@ -29,6 +29,12 @@ var DrawLatLonMarkers = function()
   }
   
   
+  var clear_map_ = function()
+  {
+    layer_markers.removeAllFeatures();
+  }
+  
+  
   var point_style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
   point_style.strokeColor = "blue";
   point_style.fillColor = "blue";
@@ -83,6 +89,7 @@ var DrawLatLonMarkers = function()
   var result =
   {
     init_map: init_map_,
+    clear_map: clear_map_,
     draw_point: draw_point_,
     draw_trace: draw_trace_,
     adjust_map: adjust_map_,

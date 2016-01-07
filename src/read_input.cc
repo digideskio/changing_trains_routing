@@ -173,3 +173,19 @@ const Parsing_State& read_osm()
 
   return global_state();
 }
+
+
+const Parsing_State& read_osm(const std::string& filename)
+{
+  FILE* input = fopen(filename.c_str(), "r");
+  g_state = &global_state();
+  
+  // read the XML input
+  parse(input, start, end);
+  
+  std::sort(g_state->nodes.begin(), g_state->nodes.end());
+  std::sort(g_state->ways.begin(), g_state->ways.end());
+  std::sort(g_state->relations.begin(), g_state->relations.end());
+
+  return global_state();
+}
