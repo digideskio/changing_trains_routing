@@ -84,7 +84,7 @@ std::pair< double, double > distance_and_offset(const Coord& start, const Coord&
 {
   static double PI = acos(0)*2;
   
-  double lon_scale = 1.0/cos(point.lat * PI / 180.0);
+  double lon_scale = cos(point.lat * PI / 180.0);
   double length = sqrt((end.lat - start.lat) * (end.lat - start.lat)
       + (end.lon - start.lon) * lon_scale * (end.lon - start.lon) * lon_scale);
   
@@ -137,7 +137,7 @@ Way_Reference::Way_Reference(const Way& way, const Coord& point, const Parsing_S
       {
 	min_distance = distance_offset.first;
 	way_ref = way.id;
-	index = std::distance(way.nds.begin(), nds_it);
+	index = std::distance(way.nds.begin(), nds_it)-1;
 	pos = distance_offset.second;
       }
       

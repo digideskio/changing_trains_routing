@@ -13,7 +13,7 @@ double distance(const Coord& a, const Coord& b)
 {
   static double PI = acos(0)*2;
   
-  double lon_scale = 1.0/cos((a.lat + b.lat) / 2.0 * PI / 180.0);
+  double lon_scale = cos((a.lat + b.lat) / 2.0 * PI / 180.0);
   return sqrt((b.lat - a.lat) * (b.lat - a.lat)
       + (b.lon - a.lon) * lon_scale * (b.lon - a.lon) * lon_scale);
 }
@@ -215,7 +215,8 @@ std::vector< const Routing_Edge* > resolve_edges
   while (f_it != final_tree.end() && f_it->second.value < last_value)
   {
 //     std::cout<<f_it->first->id<<' '<<f_it->second.value<<'\n';
-    result.push_back(f_it->second.arrived_from);
+    if (result.empty() || result.back() != f_it->second.arrived_from)
+      result.push_back(f_it->second.arrived_from);
     last_value = f_it->second.value;
     if (!f_it->second.arrived_from)
       break;

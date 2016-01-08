@@ -139,36 +139,39 @@ std::string full_trace(const Route& route)
   
   if (route.edges.size() > 1)
   {
+    Coord last_coord(0, 0);
     if (route.edges[0]->trace.back() == route.edges[1]->trace.front()
         || route.edges[0]->trace.back() == route.edges[1]->trace.back())
     {
       for (unsigned int i = route.start.index + 1; i < route.edges[0]->trace.size(); ++i)
 	result += "," + to_json(route.edges[0]->trace[i]);
+      last_coord = route.edges[0]->trace.back();
     }
     else
     {
       for (int i = route.start.index; i >= 0; --i)
 	result += "," + to_json(route.edges[0]->trace[i]);
+      last_coord = route.edges[0]->trace.front();
     }
     
     for (unsigned int j = 1; j < route.edges.size()-1; ++j)
     {
-      if (route.edges[j]->trace.front() == route.edges[j-1]->trace.front()
-          || route.edges[j]->trace.front() == route.edges[j-1]->trace.back())
+      if (route.edges[j]->trace.front() == last_coord)
       {
         for (unsigned int i = 1; i < route.edges[j]->trace.size(); ++i)
 	  result += "," + to_json(route.edges[j]->trace[i]);
+        last_coord = route.edges[j]->trace.back();
       }
       else
       {
         for (int i = route.edges[j]->trace.size()-2; i >= 0; --i)
 	  result += "," + to_json(route.edges[j]->trace[i]);
+        last_coord = route.edges[j]->trace.front();
       }
     }
     
     unsigned int j = route.edges.size()-1;    
-    if (route.edges[j]->trace.front() == route.edges[j-1]->trace.front()
-        || route.edges[j]->trace.front() == route.edges[j-1]->trace.back())
+    if (route.edges[j]->trace.front() == last_coord)
     {
       for (unsigned int i = 1; i < route.end.index; ++i)
 	result += "," + to_json(route.edges[j]->trace[i]);
