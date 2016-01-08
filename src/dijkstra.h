@@ -4,6 +4,7 @@
 
 #include "geocode.h"
 
+#include <limits>
 #include <vector>
 
 
@@ -22,19 +23,28 @@ struct Routing_Edge
 
 struct Routing_Node
 {
-  Routing_Node(Id_Type id_) : id(id_) {}
+  Routing_Node(Id_Type id_, double penalty_) : id(id_), penalty(penalty_) {}
   
   Id_Type id;
+  double penalty;
   std::vector< const Routing_Edge* > edges;
   
   bool operator<(const Routing_Node& rhs) const { return id < rhs.id; }
 };
 
 
+struct Routing_Profile
+{
+  virtual double valuation_factor(const Way& way) const = 0;
+  virtual double node_penalty(const Node& node) const = 0;
+  virtual ~Routing_Profile() {}
+};
+
+
 class Routing_Data
 {
 public:
-  Routing_Data(const Parsing_State& data);
+  Routing_Data(const Parsing_State& data, const Routing_Profile& profile);
   
   void print_statistics() const;
   
@@ -46,7 +56,8 @@ private:
   
   std::vector< std::pair< Id_Type, std::vector< std::pair< unsigned int, unsigned int > > > > way_dictionary;
   
-  Routing_Edge edge_from_way(const Way& way, unsigned int start, unsigned int end, const Parsing_State& data) const;
+  Routing_Edge edge_from_way(const Way& way, unsigned int start, unsigned int end,
+			     const Parsing_State& data, const Routing_Profile& profile) const;
 };
 
 
@@ -66,7 +77,7 @@ struct Route_Ref
 
 struct Route
 {
-  const static double max_route_length = 180.0;
+  const static double max_route_length;
   
   Route(const Route_Ref& start_, const Route_Ref& end_, double value_) : start(start_), end(end_), value(value_) {}
   

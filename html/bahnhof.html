@@ -9,8 +9,32 @@
   
   function init()
   {
-    DrawLatLonMarkers.init_map(52, 10, 8);
+    DrawLatLonMarkers.init_map(51.5, 10, 6);
     //DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
+  }
+  
+  
+  function draw_background_features(station)
+  {
+    DrawLatLonMarkers.clear_map();
+    
+    if (station.elevators)
+    {
+      for (var i = 0; i < station.elevators.length; ++i)
+      {
+        if (station.elevators[i].lat && station.elevators[i].lon)
+          DrawLatLonMarkers.draw_point(station.elevators[i].lat, station.elevators[i].lon, "black");
+      }
+    }
+    
+    if (station.gates)
+    {
+      for (var i = 0; i < station.gates.length; ++i)
+      {
+        if (station.gates[i].lat && station.gates[i].lon)
+          DrawLatLonMarkers.draw_point(station.gates[i].lat, station.gates[i].lon, "blue");
+      }
+    }
   }
 
   
@@ -21,13 +45,9 @@
         
     function handler(event)
     {
-      DrawLatLonMarkers.clear_map();
-      for (var i = 0; i < station.gates.length; ++i)
-      {
-        if (station.gates[i].lat && station.gates[i].lon)
-          DrawLatLonMarkers.draw_point(station.gates[i].lat, station.gates[i].lon);
-      }
+      draw_background_features(station);
       DrawLatLonMarkers.draw_trace(trace_);
+      DrawLatLonMarkers.adjust_map();
     }
        
     return handler;
@@ -41,12 +61,7 @@
         
     function handler(event)
     {
-      DrawLatLonMarkers.clear_map();
-      for (var i = 0; i < station.gates.length; ++i)
-      {
-        if (station.gates[i].lat && station.gates[i].lon)
-          DrawLatLonMarkers.draw_point(station.gates[i].lat, station.gates[i].lon);
-      }
+      draw_background_features(station);
       if (gate_.connections)
       {
         for (var j = 0; j < gate_.connections.length; ++j)
@@ -55,6 +70,7 @@
             DrawLatLonMarkers.draw_trace(gate_.connections[j].trace);
         }
       }
+      DrawLatLonMarkers.adjust_map();
     }
        
     return handler;
@@ -69,6 +85,12 @@
       return;
     }
       
+    if (station.error)
+    {
+      alert(station.error);
+      return;
+    }
+      
     var text_area = document.getElementById("textual_results");
     if (!text_area)
     {
@@ -76,7 +98,6 @@
       return;
     }
     
-    DrawLatLonMarkers.clear_map();
     while (text_area.hasChildNodes())
       text_area.removeChild(text_area.lastChild);
     
@@ -84,6 +105,9 @@
     if (station.name)
       xml_node.appendChild(document.createTextNode(station.name));
     text_area.appendChild(xml_node);
+    if (station.gates)
+      text_area.appendChild(document.createTextNode("with " + station.gates.length + " elevators"));
+    text_area.appendChild(document.createElement("br"));
     
     if (!station.gates)
     {
@@ -95,6 +119,7 @@
     {
       var gate = station.gates[i];
       
+      text_area.appendChild(document.createElement("br"));
       var xml_node = document.createElement("a");
       xml_node.setAttribute("href", "#");
       if (gate && gate.ref)
@@ -127,7 +152,7 @@
           
           if (gate.connections[j].cost)
           {
-            if (gate.connections[j].cost == 180.0)
+            if (gate.connections[j].trace.length == 0)
               text_area.appendChild(document.createTextNode(": not connected"));
             else
               text_area.appendChild(document.createTextNode(": " + Math.round(gate.connections[j].cost * 10) / 10));
@@ -136,10 +161,8 @@
           text_area.appendChild(document.createElement("br"));   
         }
       }
-      
-      if (gate.lat && gate.lon)
-        DrawLatLonMarkers.draw_point(gate.lat, gate.lon);
     }
+    draw_background_features(station);
     DrawLatLonMarkers.adjust_map();
   }
     
@@ -149,6 +172,11 @@
     var station_name_field = document.getElementById("station_name");
     if (station_name_field && station_name_field.value)
       station_name = station_name_field.value;
+    
+    var profile = "";
+    var profile_field = document.getElementById("profile");
+    if (profile_field && profile_field.value)
+      profile = profile_field.value;
     
     function xhreqCallback()
     {
@@ -166,7 +194,7 @@
         alert("Browser not supported (the browser doesn't have XMLHttpRequest). "
             + "Please use instead e.g. a recent Firefox version.");
     
-    xhreq.open("GET", "/adam/api/matrix?name=" + station_name, true);
+    xhreq.open("GET", "/adam/api/matrix?name=" + station_name + "&profile=" + profile, true);
     xhreq.onreadystatechange = xhreqCallback;
     xhreq.send(null);    
   }
@@ -176,14 +204,20 @@
 <body onload="init()">
 
 <div style="position:absolute; top:0%; left:0%; height:100%; width:30%; z-index:1">
-    <div style="height:20%">
-        <form action="#" acceptCharset="UTF-8">
-            <input type="text" id="station_name" value=""></input>
-            <input type="submit" value="Fetch data" onclick="load_data()"></input>
-        </form>  
-        <strong id="status">&nbsp;</strong>
-    </div>
-    <div id="textual_results" style="height:90%; overflow-y:scroll"></div>
+  <div style="height:20%">
+    <form action="#" acceptCharset="UTF-8">
+      <input type="text" id="station_name" value=""></input>
+      <select id="profile" value="distance">
+        <option>distance</option>
+        <option>sport</option>
+        <option>luggage</option>
+        <option>wheelchair</option>
+      </select>
+      <input type="submit" value="Fetch data" onclick="load_data()"></input>
+    </form>  
+    <strong id="status">&nbsp;</strong>
+  </div>
+  <div id="textual_results" style="height:90%; overflow-y:scroll"></div>
 </div>
 <div id="map" class="smallmap" style="position:absolute; top:0%; left:30%; height:100%; width:70%; z-index:1"></div>
 

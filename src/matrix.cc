@@ -136,6 +136,9 @@ std::string to_json(const Coord& coord)
 
 std::string full_trace(const Route& route)
 {
+  if (route.value == Route::max_route_length)
+    return "";
+  
   std::string result = to_json(position_of_ref(route.start));
   
   if (route.edges.size() > 1)
@@ -214,6 +217,45 @@ bool node_is_elevator(Id_Type id, const Parsing_State& data)
 }
 
 
+struct Distance_Profile : public Routing_Profile
+{
+  virtual double valuation_factor(const Way& way) const { return 40000000. / 360.; }
+  virtual double node_penalty(const Node& node) const { return 0.; }
+};
+
+
+struct Travel_Time_Profile : public Routing_Profile
+{
+  Travel_Time_Profile(double footway_, double platform_, double stairs_)
+      : footway(footway_), platform(platform_), stairs(stairs_) {}
+  
+  virtual double valuation_factor(const Way& way) const;
+  virtual double node_penalty(const Node& node) const;
+  
+  double footway;
+  double platform;
+  double stairs;
+};
+
+
+double Travel_Time_Profile::valuation_factor(const Way& way) const
+{
+  if (has_kv(way, "highway", "steps"))
+    return 40000000. / 360. / stairs;
+  else if (has_k(way, "highway"))
+    return 40000000. / 360. / footway;
+  return 40000000. / 360. / platform;
+}
+
+
+double Travel_Time_Profile::node_penalty(const Node& node) const
+{
+  if (has_kv(node, "highway", "elevator"))
+    return 2.;
+  return 0.;
+}
+
+
 int main(int argc, char* args[])
 {
   std::map< std::string, std::string > fields;
@@ -278,8 +320,22 @@ int main(int argc, char* args[])
   std::ostringstream filename;
   filename<<"../station_"<<station_id<<"/data.osm";
   
+  Routing_Profile* profile = 0;
+  std::map< std::string, std::string >::const_iterator profile_it = fields.find("profile");
+  if (profile_it == fields.end() || profile_it->second == "distance")
+    profile = new Distance_Profile();
+  else if (profile_it->second == "sport")
+    profile = new Travel_Time_Profile(90, 60, 30);
+  else if (profile_it->second == "luggage")
+    profile = new Travel_Time_Profile(60, 40, 10);
+  else if (profile_it->second == "wheelchair")
+    profile = new Travel_Time_Profile(60, 40, 0.001);
+  else
+    profile = new Distance_Profile();
+  
   const Parsing_State& state = read_osm(filename.str());
-  Routing_Data routing_data(state);
+  Routing_Data routing_data(state, *profile);
+  delete profile;
   
   std::vector< Route_Ref > destinations = build_destinations(state, routing_data);
   
@@ -314,6 +370,22 @@ int main(int argc, char* args[])
 
       std::cout<<"]}";
     }
+    std::cout<<"],"
+      "\"elevators\":[";
+    
+    bool comma = false;
+    for (std::vector< Node >::const_iterator it = state.nodes.begin(); it != state.nodes.end(); ++it)
+    {
+      if (has_kv(*it, "highway", "elevator"))
+      {
+        if (comma)
+	  std::cout<<",";
+        else
+	  comma = true;
+	std::cout<<to_json(Coord(it->lat, it->lon));
+      }
+    }
+    
     std::cout<<"]"
     "}\n";
   }

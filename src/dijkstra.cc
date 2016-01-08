@@ -9,6 +9,9 @@
 #include <map>
 
 
+const double Route::max_route_length = std::numeric_limits< double >::max();
+
+
 double distance(const Coord& a, const Coord& b)
 {
   static double PI = acos(0)*2;
@@ -20,17 +23,17 @@ double distance(const Coord& a, const Coord& b)
 
 
 Routing_Edge Routing_Data::edge_from_way(const Way& way, unsigned int start, unsigned int end,
-					 const Parsing_State& data) const
+					 const Parsing_State& data, const Routing_Profile& profile) const
 {
   Routing_Edge edge;
   std::vector< Routing_Node >::const_iterator n_it
-      = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[start]));
+      = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[start], 0));
   if (n_it != nodes.end())
     edge.start = &(*n_it);
-  n_it = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[end]));
+  n_it = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[end], 0));
   if (n_it != nodes.end())
     edge.end = &(*n_it);
-
+  
   Coord last_coord(0, 0);
   for (unsigned int i = start; i <= end; ++i)
   {
@@ -46,11 +49,13 @@ Routing_Edge Routing_Data::edge_from_way(const Way& way, unsigned int start, uns
     }
   }
   
+  edge.valuation *= profile.valuation_factor(way);
+  
   return edge;
 }
 
 
-Routing_Data::Routing_Data(const Parsing_State& data)
+Routing_Data::Routing_Data(const Parsing_State& data, const Routing_Profile& profile)
 {
   std::map< Id_Type, unsigned int > node_count;
   
@@ -68,7 +73,11 @@ Routing_Data::Routing_Data(const Parsing_State& data)
   for (std::map< Id_Type, unsigned int >::const_iterator it = node_count.begin(); it != node_count.end(); ++it)
   {
     if (it->second > 1)
-      nodes.push_back(Routing_Node(it->first));
+    {
+      std::vector< Node >::const_iterator n_it =
+          std::lower_bound(data.nodes.begin(), data.nodes.end(), Node(it->first));
+      nodes.push_back(Routing_Node(it->first, n_it == data.nodes.end() ? 0 : profile.node_penalty(*n_it)));
+    }
   }
   
   for (std::vector< Way >::const_iterator it = data.ways.begin(); it != data.ways.end(); ++it)
@@ -82,14 +91,14 @@ Routing_Data::Routing_Data(const Parsing_State& data)
       if (node_count[it->nds[i]] > 1)
       {
 	dictionary_entry.push_back(std::make_pair(start, edges.size()));
-	edges.push_back(edge_from_way(*it, start, i, data));
+	edges.push_back(edge_from_way(*it, start, i, data, profile));
 	start = i;
       }
     }
     if (start < it->nds.size() - 1)
     {
       dictionary_entry.push_back(std::make_pair(start, edges.size()));
-      edges.push_back(edge_from_way(*it, start, it->nds.size() - 1, data));
+      edges.push_back(edge_from_way(*it, start, it->nds.size() - 1, data, profile));
     }
   }
   
@@ -103,16 +112,6 @@ Routing_Data::Routing_Data(const Parsing_State& data)
     if (n_it != nodes.end())
       n_it->edges.push_back(&(*it));
   }
-}
-
-
-void Routing_Data::print_statistics() const
-{
-  double total_valuation = 0;
-  for (std::vector< Routing_Edge >::const_iterator it = edges.begin(); it != edges.end(); ++it)
-    total_valuation += it->valuation;
-  
-  std::cout<<nodes.size()<<' '<<edges.size()<<' '<<total_valuation * 111111.1<<'\n';
 }
 
 
@@ -298,7 +297,8 @@ Route_Tree::Route_Tree
       {
 	std::map< const Routing_Node*, Closed_Node >::const_iterator f_it = final_tree.find((*it)->end);
 	if (f_it == final_tree.end())
-	  open_nodes.push_back(Open_Node((*it)->end, *it, current.value + (*it)->valuation));
+	  open_nodes.push_back(Open_Node((*it)->end, *it,
+					 current.value + current.node->penalty + (*it)->valuation));
 	else
 	  eval_edge_for_destinations(**it, destinations, origin, current.value, f_it->second.value,
 				     final_tree, routes);
@@ -307,106 +307,12 @@ Route_Tree::Route_Tree
       {
 	std::map< const Routing_Node*, Closed_Node >::const_iterator f_it = final_tree.find((*it)->start);
 	if (f_it == final_tree.end())
-	  open_nodes.push_back(Open_Node((*it)->start, *it, current.value + (*it)->valuation));
+	  open_nodes.push_back(Open_Node((*it)->start, *it,
+					 current.value + current.node->penalty + (*it)->valuation));
 	else
 	  eval_edge_for_destinations(**it, destinations, origin, f_it->second.value, current.value,
 				     final_tree, routes);
       }
     }
   }
-}
-
-
-int main_(int argc, char* args[])
-{
-  const Parsing_State& state = read_osm();
-  
-  Routing_Data routing_data(state);
-  routing_data.print_statistics();
-  
-  std::vector< Route_Ref > destinations;
-  
-  for (std::vector< Way >::const_iterator it = state.ways.begin(); it != state.ways.end(); ++it)
-  {
-    if (has_kv(*it, "railway", "platform") ||
-        (has_kv(*it, "public_transport", "platform") && !has_kv(*it, "bus", "yes")))
-    {
-      std::cout<<"way "<<it->id<<'\n';
-      Geometry geom(*it, state);
-      Coord center = geom.bbox_center();
-//       std::cout<<"  "<<center.lat<<' '<<center.lon<<'\n';
-      std::string label = "-";
-      unsigned int label_level = 0;
-      for (std::vector< std::pair< std::string, std::string > >::const_iterator it2 = it->tags.begin();
-          it2 != it->tags.end(); ++it2)
-      {
-// 	std::cout<<"  "<<it2->first<<" = "<<it2->second<<'\n';
-	if (it2->first == "local_ref")
-	{
-	  label = it2->second;
-	  label_level = 3;
-	}
-	else if (label_level < 2 && it2->first == "ref")
-	{
-	  label = it2->second;
-	  label_level = 2;
-	}
-	else if (label_level < 1 && it2->first == "name")
-	{
-	  label = it2->second;
-	  label_level = 1;
-	}
-      }
-      Way_Reference ref(*it, center, state);
-//       std::cout<<"  "<<ref.way_ref<<' '<<ref.index<<' '<<ref.pos * 111111.1<<'\n';
-      destinations.push_back(Route_Ref(routing_data, ref, label, state));
-    }
-  }
-  
-  for (std::vector< Relation >::const_iterator it = state.relations.begin(); it != state.relations.end(); ++it)
-  {
-    if (has_kv(*it, "railway", "platform") ||
-        (has_kv(*it, "public_transport", "platform") && !has_kv(*it, "bus", "yes")))
-    {
-      std::cout<<"relation "<<it->id<<'\n';
-      Geometry geom(*it, state);
-      Coord center = geom.bbox_center();
-//       std::cout<<"  "<<center.lat<<' '<<center.lon<<'\n';
-      std::string label = "-";
-      unsigned int label_level = 0;
-      for (std::vector< std::pair< std::string, std::string > >::const_iterator it2 = it->tags.begin();
-          it2 != it->tags.end(); ++it2)
-      {
-// 	std::cout<<"  "<<it2->first<<" = "<<it2->second<<'\n';
-	if (it2->first == "local_ref")
-	{
-	  label = it2->second;
-	  label_level = 3;
-	}
-	else if (label_level < 2 && it2->first == "ref")
-	{
-	  label = it2->second;
-	  label_level = 2;
-	}
-	else if (label_level < 1 && it2->first == "name")
-	{
-	  label = it2->second;
-	  label_level = 1;
-	}
-      }
-      Way_Reference ref(*it, center, state);
-//       std::cout<<"  "<<ref.way_ref<<' '<<ref.index<<' '<<ref.pos * 111111.1<<'\n';
-      destinations.push_back(Route_Ref(routing_data, ref, label, state));
-    }
-  }
-  
-  for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
-  {
-    Route_Tree tree(routing_data, *it, destinations);
-    
-    for (std::vector< Route >::const_iterator r_it = tree.routes.begin(); r_it != tree.routes.end(); ++r_it)
-      std::cout<<r_it->value * 111111.1<<'\t'<<r_it->start.label<<'\t'<<r_it->end.label<<'\n';
-  }
-  
-  return 0;
 }

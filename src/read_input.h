@@ -83,6 +83,19 @@ bool has_kv(const Object& obj, const std::string& key, const std::string& value)
 }
 
 
+template< typename Object >
+bool has_k(const Object& obj, const std::string& key)
+{
+  for (std::vector< std::pair< std::string, std::string > >::const_iterator it = obj.tags.begin();
+       it != obj.tags.end(); ++it)
+  {
+    if (it->first == key)
+      return true;
+  }
+  return false;
+}
+
+
 const Parsing_State& read_osm();
 
 const Parsing_State& read_osm(const std::string& filename);

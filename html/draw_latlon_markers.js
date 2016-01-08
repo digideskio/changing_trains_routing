@@ -35,15 +35,21 @@ var DrawLatLonMarkers = function()
   }
   
   
-  var point_style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
-  point_style.strokeColor = "blue";
-  point_style.fillColor = "blue";
-  var draw_point_ = function(lat, lon)
+  var point_style =
+  {
+    "blue": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']),
+    "black": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default'])
+  }
+  point_style.blue.strokeColor = "blue";
+  point_style.blue.fillColor = "blue";
+  point_style.black.strokeColor = "black";
+  point_style.black.fillColor = "black";
+  var draw_point_ = function(lat, lon, style)
   {
     // create a point feature
     var point = new OpenLayers.Geometry.Point(lon, lat)
         .transform(new OpenLayers.Projection("EPSG:4326"), new OpenLayers.Projection("EPSG:900913"));
-    var feature = new OpenLayers.Feature.Vector(point, null, point_style);            
+    var feature = new OpenLayers.Feature.Vector(point, null, point_style[style]);            
     layer_markers.addFeatures([feature]);
   }
   
