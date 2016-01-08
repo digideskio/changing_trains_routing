@@ -3,6 +3,7 @@
 #include "read_input.h"
 
 
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -202,26 +203,73 @@ std::string full_trace(const Route& route)
 }
 
 
+bool node_is_elevator(Id_Type id, const Parsing_State& data)
+{
+  std::vector< Node >::const_iterator n_it =
+      std::lower_bound(data.nodes.begin(), data.nodes.end(), Node(id));
+  if (n_it != data.nodes.end() && n_it->id == id)
+    return (has_kv(*n_it, "highway", "elevator"));
+  else
+    return false;
+}
+
+
 int main(int argc, char* args[])
 {
-  std::cout<<"Content-type: application/json\n\n";
-  
-  std::map< std::string, std::string > fields = decode_cgi_to_plain(cgi_get_to_text());
-  std::map< std::string, std::string >::const_iterator name_it = fields.find("name");
-  if (name_it == fields.end())
+  std::map< std::string, std::string > fields;
+  for (int i = 1; i < argc; ++i)
   {
-    std::cout<<"{"
-      "\"error\":\"No name found in request.\""
-    "}\n";
-    return 0;
+    std::string arg = args[i];
+    if (arg.substr(0,2) == "--")
+    {
+      std::string::size_type pos = arg.find('=');
+      if (pos != std::string::npos && pos < arg.size()-1)
+	fields[arg.substr(2,pos-2)] = arg.substr(pos+1);
+    }
   }
   
-  unsigned int station_id = get_station_id(name_it->second);
+  if (fields.empty())
+    fields = decode_cgi_to_plain(cgi_get_to_text());
+  
+  std::map< std::string, std::string >::const_iterator output_it = fields.find("output");
+  
+  if (output_it == fields.end() || output_it->second == "json")
+    std::cout<<"Content-type: application/json\n\n";
+  
+  unsigned int station_id = 0;
+  std::string station_name;
+ 
+  std::map< std::string, std::string >::const_iterator id_it = fields.find("id");
+  if (id_it != fields.end())
+    station_id = atol(id_it->second.c_str());
+  
+  if (station_id > 0)
+  {
+    std::ostringstream filename;
+    filename<<"../station_"<<station_id<<"/name.txt";
+    std::ifstream in(filename.str().c_str());
+    
+    std::getline(in, station_name);
+  }
+  else
+  {
+    std::map< std::string, std::string >::const_iterator name_it = fields.find("name");
+    if (name_it == fields.end())
+    {
+      std::cout<<"{"
+	"\"error\":\"No name found in request.\""
+      "}\n";
+      return 0;
+    }
+  
+    station_name = name_it->second;
+    station_id = get_station_id(station_name);
+  }
   
   if (station_id == 0)
   {
     std::cout<<"{"
-      "\"name\":\""<<name_it->second<<"\","
+      "\"name\":\""<<station_name<<"\","
       "\"error\":\"No station has this name.\""
     "}\n";
     return 0;
@@ -235,36 +283,68 @@ int main(int argc, char* args[])
   
   std::vector< Route_Ref > destinations = build_destinations(state, routing_data);
   
-  std::cout<<"{"
-    "\"name\":\""<<name_it->second<<"\","
-    "\"station_id\":\""<<station_id<<"\","
-    "\"gates\":[";
-  
-  for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
+  if (output_it == fields.end() || output_it->second == "json")
   {
-    if (it != destinations.begin())
-      std::cout<<",";
-    Coord dest_pos = position_of_ref(*it);
     std::cout<<"{"
-      "\"ref\":\""<<it->label<<"\","
-      "\"lat\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lat<<","
-      "\"lon\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lon<<","
-      "\"connections\":[";
-      
-    Route_Tree tree(routing_data, *it, destinations);
-    for (std::vector< Route >::const_iterator r_it = tree.routes.begin(); r_it != tree.routes.end(); ++r_it)
+      "\"name\":\""<<station_name<<"\","
+      "\"station_id\":\""<<station_id<<"\","
+      "\"gates\":[";
+  
+    for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
     {
-      if (r_it != tree.routes.begin())
-	std::cout<<",";
+      if (it != destinations.begin())
+        std::cout<<",";
+      Coord dest_pos = position_of_ref(*it);
       std::cout<<"{"
-        "\"to\":\""<<r_it->end.label<<"\","
-	"\"cost\":\""<<std::fixed<<std::setprecision(7)<<r_it->value<<"\","
-	"\"trace\":["<<full_trace(*r_it)<<"]}";
-    }
+        "\"ref\":\""<<it->label<<"\","
+        "\"lat\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lat<<","
+        "\"lon\":"<<std::fixed<<std::setprecision(7)<<dest_pos.lon<<","
+        "\"connections\":[";
+      
+      Route_Tree tree(routing_data, *it, destinations);
+      for (std::vector< Route >::const_iterator r_it = tree.routes.begin(); r_it != tree.routes.end(); ++r_it)
+      {
+        if (r_it != tree.routes.begin())
+	  std::cout<<",";
+        std::cout<<"{"
+          "\"to\":\""<<r_it->end.label<<"\","
+	  "\"cost\":\""<<std::fixed<<std::setprecision(7)<<r_it->value<<"\","
+	  "\"trace\":["<<full_trace(*r_it)<<"]}";
+      }
 
-    std::cout<<"]}";
+      std::cout<<"]}";
+    }
+    std::cout<<"]"
+    "}\n";
   }
-  std::cout<<"]"
-  "}\n";
+  else if (output_it->second == "stats")
+  {
+    unsigned int found_ways = 0;
+    unsigned int ways_using_elevators = 0;
+    
+    for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
+    {
+      Route_Tree tree(routing_data, *it, destinations);
+      for (std::vector< Route >::const_iterator r_it = tree.routes.begin(); r_it != tree.routes.end(); ++r_it)
+      {
+	if (r_it->value != Route::max_route_length)
+	  ++found_ways;
+
+	bool uses_elevator = false;
+	for (std::vector< const Routing_Edge* >::const_iterator edge_it = r_it->edges.begin();
+	     edge_it != r_it->edges.end(); ++edge_it)
+        {
+	  if (node_is_elevator((*edge_it)->start->id, state))
+	    uses_elevator = true;
+	}
+	if (uses_elevator)
+	  ++ways_using_elevators;
+      }
+    }
+    std::cout<<destinations.size()<<'\t'<<found_ways<<'\t'
+        <<(destinations.size() * destinations.size() - found_ways)<<'\t'
+        <<ways_using_elevators<<'\t'<<station_name<<'\n';
+  }
+  
   return 0;
 }

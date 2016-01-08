@@ -130,7 +130,7 @@
             if (gate.connections[j].cost == 180.0)
               text_area.appendChild(document.createTextNode(": not connected"));
             else
-              text_area.appendChild(document.createTextNode(": " + Math.round(gate.connections[j].cost * 111111.111)));
+              text_area.appendChild(document.createTextNode(": " + Math.round(gate.connections[j].cost * 10) / 10));
           }
           
           text_area.appendChild(document.createElement("br"));   
