@@ -27,6 +27,16 @@
       }
     }
     
+    if (station.expected_elevators)
+    {
+      for (var i = 0; i < station.expected_elevators.length; ++i)
+      {
+        if (station.expected_elevators[i].lat && station.expected_elevators[i].lon)
+          DrawLatLonMarkers.draw_point(station.expected_elevators[i].lat, station.expected_elevators[i].lon,
+              "purple");
+      }
+    }
+    
     if (station.gates)
     {
       for (var i = 0; i < station.gates.length; ++i)
@@ -106,8 +116,24 @@
       xml_node.appendChild(document.createTextNode(station.name));
     text_area.appendChild(xml_node);
     if (station.gates)
-      text_area.appendChild(document.createTextNode("with " + station.gates.length + " elevators"));
+      text_area.appendChild(document.createTextNode("with " + station.gates.length + " elevators in OSM"));
     text_area.appendChild(document.createElement("br"));
+    
+    if (station.expected_elevators)
+    {
+      for (var i = 0; i < station.expected_elevators.length; ++i)
+      {
+        if (station.expected_elevators[i].ref)
+        {
+          if (station.expected_elevators[i].lat && station.expected_elevators[i].lon)
+            text_area.appendChild(document.createTextNode("elevator " + station.expected_elevators[i].ref));
+          else if (station.expected_elevators[i].status)
+            text_area.appendChild(document.createTextNode("elevator " + station.expected_elevators[i].ref
+                + ": " + station.expected_elevators[i].status));
+          text_area.appendChild(document.createElement("br"));
+        }
+      }
+    }
     
     if (!station.gates)
     {
@@ -194,9 +220,9 @@
         alert("Browser not supported (the browser doesn't have XMLHttpRequest). "
             + "Please use instead e.g. a recent Firefox version.");
     
-    xhreq.open("GET", "/adam/api/matrix?name=" + station_name + "&profile=" + profile, true);
+    xhreq.open("GET", "/adam/api/matrix_w?name=" + station_name + "&profile=" + profile, true);
     xhreq.onreadystatechange = xhreqCallback;
-    xhreq.send(null);    
+    xhreq.send(null);
   }
 
   </script>
@@ -217,7 +243,7 @@
     </form>  
     <strong id="status">&nbsp;</strong>
   </div>
-  <div id="textual_results" style="height:90%; overflow-y:scroll"></div>
+  <div id="textual_results" style="height:80%; overflow-y:scroll"></div>
 </div>
 <div id="map" class="smallmap" style="position:absolute; top:0%; left:30%; height:100%; width:70%; z-index:1"></div>
 

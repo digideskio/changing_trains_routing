@@ -256,6 +256,112 @@ double Travel_Time_Profile::node_penalty(const Node& node) const
 }
 
 
+std::vector< Node > find_osm_elevators(const std::vector< Node >& nodes)
+{
+  std::vector< Node > result;
+  
+  for (std::vector< Node >::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
+  {
+    if (has_kv(*it, "highway", "elevator"))
+      result.push_back(*it);
+  }
+  
+  return result;
+}
+
+
+struct Expected_Elevator
+{
+  Expected_Elevator() : node_ref(0), lat(100.0), lon(200.0) {}
+  
+  Id_Type node_ref;
+  double lat;
+  double lon;
+  std::string ref;
+};
+
+
+std::vector< Expected_Elevator > construct_expected_elevators(
+    unsigned int station_id, const std::vector< Node >& osm_elevators)
+{
+  std::vector< Expected_Elevator > result;
+  
+  std::ostringstream filename;
+  filename<<"../station_"<<station_id<<"/elevators.tsv";
+  std::ifstream elevator_file(filename.str().c_str());
+    
+  std::string buffer;
+  std::getline(elevator_file, buffer);
+  while (elevator_file.good())
+  {    
+    Expected_Elevator elevator;
+    
+    std::string::size_type start_pos = 0;
+    std::string::size_type pos = buffer.find('\t');
+    if (pos == std::string::npos)
+      pos = buffer.size();
+    
+    if (start_pos < buffer.size())
+    {
+      elevator.ref = buffer.substr(start_pos, pos - start_pos);
+      start_pos = (pos == buffer.size() ? pos : pos + 1);
+      pos = (start_pos == buffer.size() ? start_pos : buffer.find('\t', start_pos));
+      if (pos == std::string::npos)
+	pos = buffer.size();
+    }
+    
+    if (start_pos < buffer.size())
+    {
+      elevator.lon = atof(buffer.substr(start_pos, pos - start_pos).c_str());
+      start_pos = (pos == buffer.size() ? pos : pos + 1);
+      pos = (start_pos == buffer.size() ? start_pos : buffer.find('\t', start_pos));
+      if (pos == std::string::npos)
+	pos = buffer.size();
+    }
+    
+    if (start_pos < buffer.size())
+      elevator.lat = atof(buffer.substr(start_pos, pos - start_pos).c_str());
+    
+    result.push_back(elevator);
+    
+    std::getline(elevator_file, buffer);
+  }
+  
+  for (std::vector< Node >::const_iterator n_it = osm_elevators.begin(); n_it != osm_elevators.end(); ++n_it)
+  {
+    Coord node_pos(n_it->lat, n_it->lon);
+    double min_distance = Route::max_route_length;
+    Expected_Elevator* closest = 0;
+    
+    for (std::vector< Expected_Elevator >::iterator e_it = result.begin();
+	 e_it != result.end(); ++e_it)
+    {
+      if (e_it->lat != 100.0 && e_it->lon != 200.0)
+      {
+	double distance_ = distance(node_pos, Coord(e_it->lat, e_it->lon));
+	if (distance_ < min_distance)
+	{
+	  min_distance = distance_;
+	  closest = &*e_it;
+	}
+      }
+    }
+    
+    if (closest && !closest->node_ref)
+      closest->node_ref = n_it->id;
+    else if (closest)
+    {
+      std::vector< Node >::const_iterator n_it =
+          std::lower_bound(osm_elevators.begin(), osm_elevators.end(), Node(closest->node_ref));
+      if (min_distance < distance(Coord(n_it->lat, n_it->lon), Coord(closest->lat, closest->lon)))
+	closest->node_ref = n_it->id;
+    }
+  }
+  
+  return result;
+}
+
+
 int main(int argc, char* args[])
 {
   std::map< std::string, std::string > fields;
@@ -373,17 +479,51 @@ int main(int argc, char* args[])
     std::cout<<"],"
       "\"elevators\":[";
     
+    std::vector< Node > osm_elevators = find_osm_elevators(state.nodes);
+    
     bool comma = false;
-    for (std::vector< Node >::const_iterator it = state.nodes.begin(); it != state.nodes.end(); ++it)
+    for (std::vector< Node >::const_iterator it = osm_elevators.begin(); it != osm_elevators.end(); ++it)
     {
-      if (has_kv(*it, "highway", "elevator"))
+      if (comma)
+	std::cout<<",";
+      else
+	comma = true;
+      std::cout<<to_json(Coord(it->lat, it->lon));
+    }
+    
+    std::cout<<"],"
+      "\"expected_elevators\":[";
+    
+    std::vector< Expected_Elevator > expected_elevators = construct_expected_elevators(station_id, osm_elevators);
+    
+    comma = false;
+    for (std::vector< Expected_Elevator >::const_iterator it = expected_elevators.begin();
+	 it != expected_elevators.end(); ++it)
+    {
+      if (comma)
+	std::cout<<",";
+      else
+	comma = true;
+      if (it->node_ref)
       {
-        if (comma)
-	  std::cout<<",";
-        else
-	  comma = true;
-	std::cout<<to_json(Coord(it->lat, it->lon));
+        std::vector< Node >::const_iterator n_it =
+          std::lower_bound(state.nodes.begin(), state.nodes.end(), Node(it->node_ref));
+        std::cout<<"{"
+	  "\"ref\":"<<it->ref<<","
+	  "\"lat\":"<<n_it->lat<<","
+	  "\"lon\":"<<n_it->lon<<
+	"}";
       }
+      else if (it->lat != 100.0 && it->lon != 200.0)
+        std::cout<<"{"
+	  "\"ref\":"<<it->ref<<","
+	  "\"status\":\"no match\""
+	"}";
+      else
+        std::cout<<"{"
+	  "\"ref\":"<<it->ref<<","
+	  "\"status\":\"without coordinates\""
+	"}";
     }
     
     std::cout<<"]"
