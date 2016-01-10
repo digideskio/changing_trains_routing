@@ -31,9 +31,14 @@
     {
       for (var i = 0; i < station.expected_elevators.length; ++i)
       {
-        if (station.expected_elevators[i].lat && station.expected_elevators[i].lon)
-          DrawLatLonMarkers.draw_point(station.expected_elevators[i].lat, station.expected_elevators[i].lon,
-              "purple");
+        var elev = station.expected_elevators[i];
+        if (elev.lat && elev.lon)
+        {
+          if (elev.state && (elev.state == "active" || elev.state == "not monitored"))
+	    DrawLatLonMarkers.draw_point(elev.lat, elev.lon, "purple");
+          else
+            DrawLatLonMarkers.draw_point(elev.lat, elev.lon, "red");
+        }
       }
     }
     
@@ -123,13 +128,13 @@
     {
       for (var i = 0; i < station.expected_elevators.length; ++i)
       {
-        if (station.expected_elevators[i].ref)
+        var elev = station.expected_elevators[i];
+        if (elev.ref)
         {
-          if (station.expected_elevators[i].lat && station.expected_elevators[i].lon)
-            text_area.appendChild(document.createTextNode("elevator " + station.expected_elevators[i].ref));
-          else if (station.expected_elevators[i].status)
-            text_area.appendChild(document.createTextNode("elevator " + station.expected_elevators[i].ref
-                + ": " + station.expected_elevators[i].status));
+          if (elev.lat && elev.lon && elev.state)
+            text_area.appendChild(document.createTextNode("elevator " + elev.ref + ": " + elev.state));
+          else if (elev.status)
+            text_area.appendChild(document.createTextNode("elevator " + elev.ref + ": " + elev.status));
           text_area.appendChild(document.createElement("br"));
         }
       }

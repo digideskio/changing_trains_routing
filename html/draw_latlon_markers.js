@@ -39,7 +39,8 @@ var DrawLatLonMarkers = function()
   {
     "blue": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']),
     "black": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']),
-    "purple": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default'])
+    "purple": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']),
+    "red": OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default'])
   }
   point_style.blue.strokeColor = "blue";
   point_style.blue.fillColor = "blue";
@@ -47,6 +48,8 @@ var DrawLatLonMarkers = function()
   point_style.black.fillColor = "black";
   point_style.purple.strokeColor = "purple";
   point_style.purple.fillColor = "purple";
+  point_style.red.strokeColor = "red";
+  point_style.red.fillColor = "red";
   var draw_point_ = function(lat, lon, style)
   {
     // create a point feature

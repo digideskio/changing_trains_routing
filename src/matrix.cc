@@ -272,17 +272,21 @@ std::vector< Node > find_osm_elevators(const std::vector< Node >& nodes)
 
 struct Expected_Elevator
 {
-  Expected_Elevator() : node_ref(0), lat(100.0), lon(200.0) {}
+  enum State { not_monitored, unknown, active, inactive };
+  
+  Expected_Elevator() : node_ref(0), lat(100.0), lon(200.0), state(not_monitored) {}
   
   Id_Type node_ref;
   double lat;
   double lon;
   std::string ref;
+  State state;
 };
 
 
 std::vector< Expected_Elevator > construct_expected_elevators(
-    unsigned int station_id, const std::vector< Node >& osm_elevators)
+    unsigned int station_id, const std::vector< Node >& osm_elevators,
+    const std::map< std::string, std::string >& elevator_states)
 {
   std::vector< Expected_Elevator > result;
   
@@ -356,6 +360,72 @@ std::vector< Expected_Elevator > construct_expected_elevators(
       if (min_distance < distance(Coord(n_it->lat, n_it->lon), Coord(closest->lat, closest->lon)))
 	closest->node_ref = n_it->id;
     }
+  }
+  
+  for (std::vector< Expected_Elevator >::iterator e_it = result.begin();
+      e_it != result.end(); ++e_it)
+  {
+    std::map< std::string, std::string >::const_iterator s_it = elevator_states.find(e_it->ref);
+    if (s_it != elevator_states.end())
+    {
+      if (s_it->second == "ACTIVE")
+	e_it->state = Expected_Elevator::active;
+      else if (s_it->second == "INACTIVE")
+	e_it->state = Expected_Elevator::inactive;
+      else
+	e_it->state = Expected_Elevator::unknown;
+    }
+  }
+  
+  return result;
+}
+
+
+std::map< std::string, std::string > load_elevator_states()
+{
+  std::map< std::string, std::string > result;
+  
+  std::ifstream in("../data/elevator_state.json");
+  std::string json;
+  std::getline(in, json);
+  
+  std::string::size_type pos = 0;
+  std::string ref;
+  std::string state;
+  while (pos < json.size() && json[pos] != ']')
+  {
+    if (json[pos] == '}')
+    {
+      if (ref != "" && state != "")
+	result[ref] = state;
+      
+      ref = "";
+      state = "";
+      ++pos;
+    }
+    else if (json[pos] == '"')
+    {
+      if (pos + 18 < json.size() && json.substr(pos, 18) == "\"equipmentnumber\":")
+      {
+	std::string::size_type end_pos = json.find(',', pos + 18);
+	if (end_pos == std::string::npos)
+	  end_pos = json.size();
+	ref = json.substr(pos + 18, end_pos - pos - 18);
+	pos = end_pos;
+      }
+      else if (pos + 8 < json.size() && json.substr(pos, 8) == "\"state\":")
+      {
+	std::string::size_type end_pos = json.find(',', pos + 8);
+	if (end_pos == std::string::npos)
+	  end_pos = json.size();
+	state = json.substr(pos + 9, end_pos - pos - 10);
+	pos = end_pos;
+      }
+      else
+	++pos;
+    }
+    else
+      ++pos;
   }
   
   return result;
@@ -452,6 +522,11 @@ int main(int argc, char* args[])
       "\"station_id\":\""<<station_id<<"\","
       "\"gates\":[";
   
+    std::vector< Node > osm_elevators = find_osm_elevators(state.nodes);
+    std::map< std::string, std::string > elevator_states = load_elevator_states();
+    std::vector< Expected_Elevator > expected_elevators
+        = construct_expected_elevators(station_id, osm_elevators, elevator_states);
+    
     for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
     {
       if (it != destinations.begin())
@@ -479,8 +554,6 @@ int main(int argc, char* args[])
     std::cout<<"],"
       "\"elevators\":[";
     
-    std::vector< Node > osm_elevators = find_osm_elevators(state.nodes);
-    
     bool comma = false;
     for (std::vector< Node >::const_iterator it = osm_elevators.begin(); it != osm_elevators.end(); ++it)
     {
@@ -494,8 +567,12 @@ int main(int argc, char* args[])
     std::cout<<"],"
       "\"expected_elevators\":[";
     
-    std::vector< Expected_Elevator > expected_elevators = construct_expected_elevators(station_id, osm_elevators);
-    
+    std::vector< std::string > elevator_state_strings;
+    elevator_state_strings.push_back("not monitored");
+    elevator_state_strings.push_back("unknown");
+    elevator_state_strings.push_back("active");
+    elevator_state_strings.push_back("inactive");
+        
     comma = false;
     for (std::vector< Expected_Elevator >::const_iterator it = expected_elevators.begin();
 	 it != expected_elevators.end(); ++it)
@@ -511,7 +588,8 @@ int main(int argc, char* args[])
         std::cout<<"{"
 	  "\"ref\":"<<it->ref<<","
 	  "\"lat\":"<<n_it->lat<<","
-	  "\"lon\":"<<n_it->lon<<
+	  "\"lon\":"<<n_it->lon<<","
+	  "\"state\":\""<<elevator_state_strings[it->state]<<"\""
 	"}";
       }
       else if (it->lat != 100.0 && it->lon != 200.0)
