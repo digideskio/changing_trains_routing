@@ -3,6 +3,7 @@
 #include "read_input.h"
 
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
@@ -219,6 +220,9 @@ bool node_is_elevator(Id_Type id, const Parsing_State& data)
 
 struct Distance_Profile : public Routing_Profile
 {
+  virtual bool is_routable(const Way& way) const { return true; }
+  virtual bool is_routable(const Node& node) const { return true; }
+  
   virtual double valuation_factor(const Way& way) const { return 40000000. / 360.; }
   virtual double node_penalty(const Node& node) const { return 0.; }
 };
@@ -229,13 +233,28 @@ struct Travel_Time_Profile : public Routing_Profile
   Travel_Time_Profile(double footway_, double platform_, double stairs_)
       : footway(footway_), platform(platform_), stairs(stairs_) {}
   
+  virtual bool is_routable(const Way& way) const;
+  virtual bool is_routable(const Node& node) const;
+  
   virtual double valuation_factor(const Way& way) const;
   virtual double node_penalty(const Node& node) const;
   
   double footway;
   double platform;
   double stairs;
+  
+  std::vector< Id_Type > blocked_nodes;
 };
+
+
+bool Travel_Time_Profile::is_routable(const Way& way) const
+{
+  if (has_kv(way, "highway", "steps"))
+    return (stairs > 0);
+  else if (has_k(way, "highway"))
+    return (footway > 0);
+  return (platform > 0);
+}
 
 
 double Travel_Time_Profile::valuation_factor(const Way& way) const
@@ -245,6 +264,13 @@ double Travel_Time_Profile::valuation_factor(const Way& way) const
   else if (has_k(way, "highway"))
     return 40000000. / 360. / footway;
   return 40000000. / 360. / platform;
+}
+
+
+bool Travel_Time_Profile::is_routable(const Node& node) const
+{
+  std::vector< Id_Type >::const_iterator it = std::lower_bound(blocked_nodes.begin(), blocked_nodes.end(), node.id);
+  return !(it != blocked_nodes.end() && *it == node.id);
 }
 
 
@@ -505,11 +531,29 @@ int main(int argc, char* args[])
   else if (profile_it->second == "luggage")
     profile = new Travel_Time_Profile(60, 40, 10);
   else if (profile_it->second == "wheelchair")
-    profile = new Travel_Time_Profile(60, 40, 0.001);
+    profile = new Travel_Time_Profile(60, 40, 0);
   else
     profile = new Distance_Profile();
   
   const Parsing_State& state = read_osm(filename.str());
+  
+  std::vector< Node > osm_elevators = find_osm_elevators(state.nodes);
+  std::map< std::string, std::string > elevator_states = load_elevator_states();
+  std::vector< Expected_Elevator > expected_elevators
+      = construct_expected_elevators(station_id, osm_elevators, elevator_states);
+    
+  Travel_Time_Profile* travel_time_profile = dynamic_cast< Travel_Time_Profile* >(profile);
+  if (travel_time_profile)
+  {
+    for (std::vector< Expected_Elevator >::const_iterator it = expected_elevators.begin();
+	 it != expected_elevators.end(); ++it)
+    {
+      if (it->node_ref && (it->state == Expected_Elevator::unknown || it->state == Expected_Elevator::inactive))
+	travel_time_profile->blocked_nodes.push_back(it->node_ref);
+    }
+    std::sort(travel_time_profile->blocked_nodes.begin(), travel_time_profile->blocked_nodes.end());
+  }
+      
   Routing_Data routing_data(state, *profile);
   delete profile;
   
@@ -521,11 +565,6 @@ int main(int argc, char* args[])
       "\"name\":\""<<station_name<<"\","
       "\"station_id\":\""<<station_id<<"\","
       "\"gates\":[";
-  
-    std::vector< Node > osm_elevators = find_osm_elevators(state.nodes);
-    std::map< std::string, std::string > elevator_states = load_elevator_states();
-    std::vector< Expected_Elevator > expected_elevators
-        = construct_expected_elevators(station_id, osm_elevators, elevator_states);
     
     for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
     {

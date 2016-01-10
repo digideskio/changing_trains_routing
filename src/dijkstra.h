@@ -23,9 +23,11 @@ struct Routing_Edge
 
 struct Routing_Node
 {
-  Routing_Node(Id_Type id_, double penalty_) : id(id_), penalty(penalty_) {}
+  Routing_Node(Id_Type id_, bool is_routable_, double penalty_)
+      : id(id_), is_routable(is_routable_), penalty(penalty_) {}
   
   Id_Type id;
+  bool is_routable;
   double penalty;
   std::vector< const Routing_Edge* > edges;
   
@@ -35,8 +37,12 @@ struct Routing_Node
 
 struct Routing_Profile
 {
+  virtual bool is_routable(const Way& way) const = 0;
+  virtual bool is_routable(const Node& node) const = 0;
+  
   virtual double valuation_factor(const Way& way) const = 0;
   virtual double node_penalty(const Node& node) const = 0;
+  
   virtual ~Routing_Profile() {}
 };
 

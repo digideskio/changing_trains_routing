@@ -27,10 +27,10 @@ Routing_Edge Routing_Data::edge_from_way(const Way& way, unsigned int start, uns
 {
   Routing_Edge edge;
   std::vector< Routing_Node >::const_iterator n_it
-      = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[start], 0));
+      = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[start], 0, 0));
   if (n_it != nodes.end())
     edge.start = &(*n_it);
-  n_it = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[end], 0));
+  n_it = std::lower_bound(nodes.begin(), nodes.end(), Routing_Node(way.nds[end], 0, 0));
   if (n_it != nodes.end())
     edge.end = &(*n_it);
   
@@ -76,7 +76,8 @@ Routing_Data::Routing_Data(const Parsing_State& data, const Routing_Profile& pro
     {
       std::vector< Node >::const_iterator n_it =
           std::lower_bound(data.nodes.begin(), data.nodes.end(), Node(it->first));
-      nodes.push_back(Routing_Node(it->first, n_it == data.nodes.end() ? 0 : profile.node_penalty(*n_it)));
+      nodes.push_back(Routing_Node(it->first, profile.is_routable(*n_it),
+				   n_it == data.nodes.end() ? 0 : profile.node_penalty(*n_it)));
     }
   }
   
@@ -91,14 +92,16 @@ Routing_Data::Routing_Data(const Parsing_State& data, const Routing_Profile& pro
       if (node_count[it->nds[i]] > 1)
       {
 	dictionary_entry.push_back(std::make_pair(start, edges.size()));
-	edges.push_back(edge_from_way(*it, start, i, data, profile));
+	if (profile.is_routable(*it))
+	  edges.push_back(edge_from_way(*it, start, i, data, profile));
 	start = i;
       }
     }
     if (start < it->nds.size() - 1)
     {
       dictionary_entry.push_back(std::make_pair(start, edges.size()));
-      edges.push_back(edge_from_way(*it, start, it->nds.size() - 1, data, profile));
+      if (profile.is_routable(*it))
+	edges.push_back(edge_from_way(*it, start, it->nds.size() - 1, data, profile));
     }
   }
   
@@ -282,6 +285,9 @@ Route_Tree::Route_Tree
     std::sort(open_nodes.begin(), open_nodes.end());
     Open_Node current = open_nodes.back();
     open_nodes.pop_back();
+    
+    if (!current.node->is_routable)
+      continue;
     
     if (final_tree.find(current.node) != final_tree.end())
       continue;
