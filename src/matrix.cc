@@ -458,6 +458,12 @@ std::map< std::string, std::string > load_elevator_states()
 }
 
 
+bool operator<(const std::pair< Id_Type, bool >& lhs, const std::pair< Id_Type, bool >& rhs)
+{
+  return lhs.first < rhs.first;
+}
+
+
 int main(int argc, char* args[])
 {
   std::map< std::string, std::string > fields;
@@ -670,8 +676,51 @@ int main(int argc, char* args[])
 	  ++ways_using_elevators;
       }
     }
+    
+    std::vector< std::pair< Id_Type, bool > > expected_elevators_ids;
+    for (std::vector< Expected_Elevator >::const_iterator ee_it = expected_elevators.begin();
+	ee_it != expected_elevators.end(); ++ee_it)
+      expected_elevators_ids.push_back(std::make_pair(ee_it->node_ref, false));
+    std::sort(expected_elevators_ids.begin(), expected_elevators_ids.end());
+       
+    for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)
+    {
+      Route_Tree tree(routing_data, *it, destinations);
+      for (std::vector< Route >::const_iterator r_it = tree.routes.begin(); r_it != tree.routes.end(); ++r_it)
+      {
+	for (std::vector< const Routing_Edge* >::const_iterator e_it = r_it->edges.begin();
+	    e_it != r_it->edges.end(); ++e_it)
+	{
+	  std::vector< std::pair< Id_Type, bool > >::iterator ee_it
+	      = std::lower_bound(expected_elevators_ids.begin(), expected_elevators_ids.end(),
+				 std::make_pair((*e_it)->end->id, false));
+	  if (ee_it != expected_elevators_ids.end() && ee_it->first == (*e_it)->end->id)
+	    ee_it->second = true;
+	}
+      }
+    }
+    
+    unsigned int matched_elevators_count = 0;
+    for (std::vector< Expected_Elevator >::const_iterator it = expected_elevators.begin();
+	 it != expected_elevators.end(); ++it)
+    {
+      if (it->node_ref)
+	++matched_elevators_count;
+      else if (it->lat != 100.0 && it->lon != 200.0)
+	++matched_elevators_count;
+    }
+    
+    unsigned int used_elevators_count = 0;
+    for (std::vector< std::pair< Id_Type, bool > >::const_iterator it = expected_elevators_ids.begin();
+	it != expected_elevators_ids.end(); ++it)
+    {
+      if (it->second)
+	++used_elevators_count;
+    }
+    
     std::cout<<destinations.size()<<'\t'<<found_ways<<'\t'
         <<(destinations.size() * destinations.size() - found_ways)<<'\t'
+        <<matched_elevators_count<<'\t'<<used_elevators_count<<'\t'
         <<ways_using_elevators<<'\t'<<station_name<<'\n';
   }
   
