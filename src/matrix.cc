@@ -342,7 +342,8 @@ std::vector< Expected_Elevator > construct_expected_elevators(
     
     if (start_pos < buffer.size())
     {
-      elevator.lon = atof(buffer.substr(start_pos, pos - start_pos).c_str());
+      if (pos > start_pos + 1 && (isdigit(buffer[start_pos]) || (buffer[start_pos] == '-')))
+        elevator.lon = atof(buffer.substr(start_pos, pos - start_pos).c_str());
       start_pos = (pos == buffer.size() ? pos : pos + 1);
       pos = (start_pos == buffer.size() ? start_pos : buffer.find('\t', start_pos));
       if (pos == std::string::npos)
@@ -350,7 +351,10 @@ std::vector< Expected_Elevator > construct_expected_elevators(
     }
     
     if (start_pos < buffer.size())
-      elevator.lat = atof(buffer.substr(start_pos, pos - start_pos).c_str());
+    {
+      if (pos > start_pos + 1 && (isdigit(buffer[start_pos]) || (buffer[start_pos] == '-')))
+        elevator.lat = atof(buffer.substr(start_pos, pos - start_pos).c_str());
+    }
     
     result.push_back(elevator);
     
@@ -360,7 +364,7 @@ std::vector< Expected_Elevator > construct_expected_elevators(
   for (std::vector< Node >::const_iterator n_it = osm_elevators.begin(); n_it != osm_elevators.end(); ++n_it)
   {
     Coord node_pos(n_it->lat, n_it->lon);
-    double min_distance = Route::max_route_length;
+    double min_distance = .0002;
     Expected_Elevator* closest = 0;
     
     for (std::vector< Expected_Elevator >::iterator e_it = result.begin();
@@ -599,14 +603,25 @@ int main(int argc, char* args[])
     std::cout<<"],"
       "\"elevators\":[";
     
+    std::vector< Id_Type > expected_elevators_ids;
+    for (std::vector< Expected_Elevator >::const_iterator ee_it = expected_elevators.begin();
+	ee_it != expected_elevators.end(); ++ee_it)
+      expected_elevators_ids.push_back(ee_it->node_ref);
+    std::sort(expected_elevators_ids.begin(), expected_elevators_ids.end());
+    
     bool comma = false;
     for (std::vector< Node >::const_iterator it = osm_elevators.begin(); it != osm_elevators.end(); ++it)
     {
-      if (comma)
-	std::cout<<",";
-      else
-	comma = true;
-      std::cout<<to_json(Coord(it->lat, it->lon));
+      std::vector< Id_Type >::const_iterator ee_it
+          = std::lower_bound(expected_elevators_ids.begin(), expected_elevators_ids.end(), it->id);
+      if (ee_it == expected_elevators_ids.end() || *ee_it != it->id)
+      {
+        if (comma)
+	  std::cout<<",";
+        else
+	  comma = true;
+        std::cout<<to_json(Coord(it->lat, it->lon));
+      }
     }
     
     std::cout<<"],"
@@ -640,6 +655,8 @@ int main(int argc, char* args[])
       else if (it->lat != 100.0 && it->lon != 200.0)
         std::cout<<"{"
 	  "\"ref\":"<<it->ref<<","
+	  "\"lat\":"<<it->lat<<","
+	  "\"lon\":"<<it->lon<<","
 	  "\"status\":\"no match\""
 	"}";
       else

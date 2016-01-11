@@ -34,7 +34,11 @@
         var elev = station.expected_elevators[i];
         if (elev.lat && elev.lon)
         {
-          if (elev.state && (elev.state == "active" || elev.state == "not monitored"))
+          if (elev.status && elev.status == "no match")
+            DrawLatLonMarkers.draw_point(elev.lat, elev.lon, "yellow");
+          else if (elev.state && elev.state == "active")
+	    DrawLatLonMarkers.draw_point(elev.lat, elev.lon, "green");
+          else if (elev.state && elev.state == "not monitored")
 	    DrawLatLonMarkers.draw_point(elev.lat, elev.lon, "purple");
           else
             DrawLatLonMarkers.draw_point(elev.lat, elev.lon, "red");
