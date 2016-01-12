@@ -718,13 +718,25 @@ int main(int argc, char* args[])
     }
     
     unsigned int matched_elevators_count = 0;
+    unsigned int elevators_with_coords_count = 0;
     for (std::vector< Expected_Elevator >::const_iterator it = expected_elevators.begin();
 	 it != expected_elevators.end(); ++it)
     {
       if (it->node_ref)
+      {
 	++matched_elevators_count;
+	++elevators_with_coords_count;
+      }
       else if (it->lat != 100.0 && it->lon != 200.0)
-	++matched_elevators_count;
+	++elevators_with_coords_count;
+    }
+    
+    unsigned int num_defunct_elevators = 0;
+    for (std::vector< Expected_Elevator >::const_iterator it = expected_elevators.begin();
+	 it != expected_elevators.end(); ++it)
+    {
+      if (it->state == Expected_Elevator::unknown || it->state == Expected_Elevator::inactive)
+	++num_defunct_elevators;
     }
     
     unsigned int used_elevators_count = 0;
@@ -737,7 +749,9 @@ int main(int argc, char* args[])
     
     std::cout<<destinations.size()<<'\t'<<found_ways<<'\t'
         <<(destinations.size() * destinations.size() - found_ways)<<'\t'
+        <<expected_elevators.size()<<'\t'<<elevators_with_coords_count<<'\t'
         <<matched_elevators_count<<'\t'<<used_elevators_count<<'\t'
+        <<num_defunct_elevators<<'\t'
         <<ways_using_elevators<<'\t'<<station_name<<'\n';
   }
   
