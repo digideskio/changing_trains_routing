@@ -2,7 +2,6 @@
 
 
 #include <cmath>
-#include <iostream>
 
 
 Geometry::Geometry(const Node& node)
@@ -123,7 +122,7 @@ Way_Reference::Way_Reference(const Way& way, const Coord& point, const Parsing_S
   Coord last_coord(0, 0);
   if (n_it != data.nodes.end() && n_it->id == *nds_it)
     last_coord = Coord(n_it->lat, n_it->lon);
-  
+
   for (++nds_it; nds_it != way.nds.end(); ++nds_it)
   {
     std::vector< Node >::const_iterator n_it =
@@ -132,7 +131,7 @@ Way_Reference::Way_Reference(const Way& way, const Coord& point, const Parsing_S
     {
       Coord coord(n_it->lat, n_it->lon);
       
-      std::pair< double, double > distance_offset = distance_and_offset(coord, last_coord, point);
+      std::pair< double, double > distance_offset = distance_and_offset(last_coord, coord, point);
       if (distance_offset.first <= min_distance)
       {
 	min_distance = distance_offset.first;
@@ -178,12 +177,12 @@ Way_Reference::Way_Reference(const Relation& relation, const Coord& point, const
           {
             Coord coord(n_it->lat, n_it->lon);
       
-            std::pair< double, double > distance_offset = distance_and_offset(coord, last_coord, point);
+            std::pair< double, double > distance_offset = distance_and_offset(last_coord, coord, point);
             if (distance_offset.first <= min_distance)
             {
 	      min_distance = distance_offset.first;
 	      way_ref = w_it->id;
-	      index = std::distance(w_it->nds.begin(), nds_it);
+	      index = std::distance(w_it->nds.begin(), nds_it)-1;
 	      pos = distance_offset.second;
             }
       
