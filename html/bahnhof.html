@@ -10,14 +10,24 @@
   function init()
   {
     DrawLatLonMarkers.init_map(51.5, 10, 6);
-    //DrawLatLonMarkers.draw_trace([{lat: 50.8, lon: 7.1}, {lat: 51.2, lon: 7.2}, {lat: 52, lon: 7.5}]);
+    var text_area = document.getElementById("textual_results");
+    if (text_area)
+      add_legend(text_area);
   }
   
   
-  function draw_background_features(station)
+  function add_legend(text_area)
   {
-    DrawLatLonMarkers.clear_map();
-    
+    var xml_node = document.createElement("a");
+    xml_node.setAttribute("href", "legend.html");
+    xml_node.setAttribute("target", "_blank");
+    xml_node.appendChild(document.createTextNode("Legend"));
+    text_area.appendChild(xml_node);      
+  }
+  
+  
+  function draw_elevators(station)
+  {
     if (station.elevators)
     {
       for (var i = 0; i < station.elevators.length; ++i)
@@ -45,6 +55,13 @@
         }
       }
     }
+  }
+  
+  
+  function draw_background_features(station)
+  {
+    DrawLatLonMarkers.clear_map();
+    draw_elevators(station);
     
     if (station.gates)
     {
@@ -54,6 +71,21 @@
           DrawLatLonMarkers.draw_point(station.gates[i].lat, station.gates[i].lon, "blue");
       }
     }
+  }
+
+  
+  function closure_show_all_elevators(station)
+  {
+    var station_ = station;
+        
+    function handler(event)
+    {
+      DrawLatLonMarkers.clear_map();
+      draw_elevators(station);
+      DrawLatLonMarkers.adjust_map();
+    }
+       
+    return handler;
   }
 
   
@@ -119,13 +151,37 @@
     
     while (text_area.hasChildNodes())
       text_area.removeChild(text_area.lastChild);
+      
+    add_legend(text_area);
     
     var xml_node = document.createElement("h2");
     if (station.name)
       xml_node.appendChild(document.createTextNode(station.name));
     text_area.appendChild(xml_node);
-    if (station.gates)
-      text_area.appendChild(document.createTextNode("with " + station.gates.length + " elevators in OSM"));
+    if (station.elevators)
+    {
+      var elevator_count = station.elevators.length;
+      if (station.expected_elevators)
+      {
+        for (var i = 0; i < station.expected_elevators.length; ++i)
+        {
+          var elev = station.expected_elevators[i];
+          if (elev.lat && elev.lon && elev.status != "no match")
+            ++elevator_count;
+        }
+      }
+    
+      text_area.appendChild(document.createTextNode("with "));
+      var xml_node = document.createElement("a");
+      xml_node.setAttribute("href", "#");
+      xml_node.appendChild(document.createTextNode(elevator_count + " elevators"));
+      xml_node.addEventListener("click",
+      {
+        handleEvent: closure_show_all_elevators(station)
+      }, false);
+      text_area.appendChild(xml_node);      
+      text_area.appendChild(document.createTextNode(" in OSM"));
+    }
     text_area.appendChild(document.createElement("br"));
     
     if (station.expected_elevators)

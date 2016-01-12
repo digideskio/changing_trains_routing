@@ -1,0 +1,54 @@
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" lang="en"></meta>
+  <title>Legende zur Umsteigematrix im Bahnhof</title>
+</head>
+<body>
+
+<h1>Anleitung zur <em>Umsteigematrix im Bahnhof</em></h1>
+
+<h2>Bahnhofs-Auswahl</h2>
+
+<p>Die <a href="bahnhof.html">Umsteigematrix im Bahnhof</a> erlaubt es,
+für jeden Bahnhof in Deutschland mit Aufzug zu beurteilen,
+ob die Daten aus OSM plus die Daten aus der (noch experimentellen) <a href="https://www.mindboxberlin.com/index.php/contest.html">DB-Aufzug-Status-API</a> ausreichen,
+um dort Routing für alle Reisendengruppen vom sportlichen Pendler bis zum Rollstuhlfahrer durchzuführen.</p>
+
+<p>Dazu muss in das Feld ein Bahnhofsname aus der <a href="https://github.com/drolbr/changing_trains_routing/blob/master/data/station_list.txt">Liste aller Bahnhöfe in Deutschland mit Aufzug</a> eingegeben
+und eines der Routing-Profile <em>sport</em>, <em>luggage</em> oder <em>wheelchair</em> gewählt werden.
+Die Fortbewegungszeiten werden dann geschätzen Minuten angegeben.
+Alternativ kann die Weglänge mit dem Profil <em>distance</em> in Metern bestimmt werden.</p>
+
+<h2>Symbole</h2>
+
+<p>In der Karte haben die Farben der Punkte folgende Bedeutung:<br/>
+<strong style="color:blue">blauer Punkt</strong>: Aus OSM ermittelter Ein-/Austiegspunkt<br/>
+<strong style="color:black">schwarzer Punkt</strong>: In OSM eingetragener Aufzug, der zu keinem Aufzug aus der DB-Datenbank passt<br/>
+<strong style="color:yellow">gelber Punkt</strong>: In der DB-Datenbank eingetragener Aufzug, der zu keinem Aufzug aus OSM passt<br/>
+<strong style="color:purple">lila Punkt</strong>: Übereinstimmender Aufzug, nicht in der Echtzeit-API hinterlegt<br/>
+<strong style="color:green">grüner Punkt</strong>: Übereinstimmender Aufzug, gemäß Echtzeit-API betriebsbereit<br/>
+<strong style="color:red">roter Punkt</strong>: Übereinstimmender Aufzug, gemäß Echtzeit-API nicht erreichbar oder gestört<br/>
+Werden Routingdaten ausgewählt, so werden sie als blaue Linien angezeigt.
+</p>
+
+<h2>Karten-Ansichten</h2>
+
+<p>In der Default-Ansicht werden alle Ein-/Austiegspunkte und Aufzüge angezeigt.</p>
+
+<p>Durch Klick auf den Link <em>with ... elevator</em> werden nur noch die Aufzüge angezeigt.
+Dies soll es erleichtern, auch durch Zielpunkte verdeckte Aufzüge zu finden.</p>
+
+<p>Durch Klick auf einen spezfischen Link, d.h. die Links jeweils hinter einem Pfeil <em>-></em>,
+wird die zwischen den beiden Zielpunkten gefundene Route angezeigt.
+Durch Klick auf einen Übersichtslink wird der Baum angezeigt, der von allen Routen ab der Haltestelle aufgespannt wird.</p>
+
+<h2>Routing-Regeln</h2>
+
+<p>In den Profilen <em>sport</em> und <em>luggage</em> werden grundsätzlich alle in OSM als <em>highway</em> getaggte Wege benutzt.
+Im Profil <em>wheelchair</em> werden Treppen, in OSM <em>highway=steps</em> vermieden.
+In jedem dieser Profile sind nur solche Aufzüge zugelassen,
+die entweder nicht überwacht oder als betriebsbereit gemeldet sind.
+Im Profil <em>distance</em> wird rein nach Entfernung geroutet, d.h. der Betriebszustand der Aufzüge spielt dabei keine Rolle.</p>
+
+</body>
+</html>
