@@ -131,6 +131,14 @@ void start(const char *el, const char **attr)
     if (member.ref != 0)
       g_state->members.push_back(member);
   }
+  else if (!strcmp(el, "meta"))
+  {
+    for (unsigned int i(0); attr[i]; i += 2)
+    {
+      if (!strcmp(attr[i], "osm_base"))
+	g_state->timestamp = attr[i+1];
+    }
+  }
 }
 
 

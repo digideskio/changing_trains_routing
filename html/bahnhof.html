@@ -154,6 +154,13 @@
       
     add_legend(text_area);
     
+    if (station.timestamp)
+    {
+      text_area.appendChild(document.createElement("br"));
+      text_area.appendChild(document.createTextNode("OSM data last updated: " + station.timestamp));
+      text_area.appendChild(document.createElement("br"));
+    }
+    
     var xml_node = document.createElement("h2");
     if (station.name)
       xml_node.appendChild(document.createTextNode(station.name));

@@ -529,7 +529,7 @@ bool operator<(const std::pair< Id_Type, bool >& lhs, const std::pair< Id_Type, 
 
 int main(int argc, char* args[])
 {
-  std::map< std::string, std::string > fields;
+  std::map< std::string, std::string > fields = decode_cgi_to_plain(cgi_get_to_text());
   for (int i = 1; i < argc; ++i)
   {
     std::string arg = args[i];
@@ -540,9 +540,6 @@ int main(int argc, char* args[])
 	fields[arg.substr(2,pos-2)] = arg.substr(pos+1);
     }
   }
-  
-  if (fields.empty())
-    fields = decode_cgi_to_plain(cgi_get_to_text());
   
   std::map< std::string, std::string >::const_iterator output_it = fields.find("output");
   
@@ -577,6 +574,12 @@ int main(int argc, char* args[])
   
     station_name = name_it->second;
     station_id = get_station_id(station_name);
+  }
+  
+  if (output_it != fields.end() && output_it->second == "id")
+  {
+    std::cout<<station_id<<'\n';
+    return 0;
   }
   
   if (station_id == 0)
@@ -633,6 +636,7 @@ int main(int argc, char* args[])
     std::cout<<"{"
       "\"name\":\""<<station_name<<"\","
       "\"station_id\":\""<<station_id<<"\","
+      "\"timestamp\":\""<<state.timestamp<<"\","
       "\"gates\":[";
     
     for (std::vector< Route_Ref >::const_iterator it = destinations.begin(); it != destinations.end(); ++it)

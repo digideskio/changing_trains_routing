@@ -67,6 +67,8 @@ struct Parsing_State
   std::vector< Relation::Member > members;
   
   std::vector< Node > implicit_nodes;
+  
+  std::string timestamp;
 };
 
 
