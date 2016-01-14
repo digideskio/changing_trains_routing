@@ -12,7 +12,12 @@
     DrawLatLonMarkers.init_map(51.5, 10, 6);
     var text_area = document.getElementById("textual_results");
     if (text_area)
+    {
       add_legend(text_area);
+      text_area.appendChild(document.createElement("br"));
+      text_area.appendChild(document.createElement("br"));
+      add_station_lists(text_area);
+    }
   }
   
   
@@ -23,6 +28,205 @@
     xml_node.setAttribute("target", "_blank");
     xml_node.appendChild(document.createTextNode("Legend"));
     text_area.appendChild(xml_node);      
+  }
+  
+  
+  function closure_use_selected_station(dom_select)
+  {
+    var dom_select_ = dom_select;
+        
+    function handler(event)
+    {
+      var station_name = "";
+      var station_name_field = document.getElementById("station_name");
+      if (station_name_field)
+        station_name_field["value"] = dom_select_.value;
+      
+      load_data();
+    }
+       
+    return handler;
+  }
+
+  
+  function fill_station_lists(station_data)
+  {  
+    var station_selection = document.getElementById("station_selection");
+    if (!station_selection)
+      return;
+      
+    while (station_selection.hasChildNodes())
+      station_selection.removeChild(station_selection.lastChild);
+    
+    var xml_node = document.createElement("strong");
+    xml_node.appendChild(document.createTextNode("Stations with elevator:"));
+    station_selection.appendChild(xml_node);
+  
+    var all_stations_form = document.createElement("form");
+    all_stations_form.setAttribute("id", "all_stations_form");
+    all_stations_form.setAttribute("action", "#");
+    var all_stations = document.createElement("select");
+    all_stations.setAttribute("id", "all_stations");
+    all_stations.setAttribute("value", "Select a station ...");
+    var station = document.createElement("option");
+    station.appendChild(document.createTextNode("Select a station ..."));
+    all_stations.appendChild(station);
+    
+    if (station_data.stations)
+    {
+      for (var i = 0; i < station_data.stations.length; ++i)
+      {
+        var entry = station_data.stations[i];
+        var station = document.createElement("option");
+        if (entry.name)
+          station.appendChild(document.createTextNode(entry.name));
+        all_stations.appendChild(station);
+      }
+    }
+    
+    all_stations.addEventListener("change",
+    {
+      handleEvent: closure_use_selected_station(all_stations)
+    }, false);
+    all_stations_form.appendChild(all_stations);
+    station_selection.appendChild(all_stations_form);
+  
+    var xml_node = document.createElement("strong");
+    xml_node.appendChild(document.createTextNode("Stations with non-matched elevators:"));
+    station_selection.appendChild(xml_node);
+  
+    var stations_missing_an_expected_form = document.createElement("form");
+    stations_missing_an_expected_form.setAttribute("id", "stations_missing_an_expected_form");
+    stations_missing_an_expected_form.setAttribute("action", "#");
+    var stations_missing_an_expected = document.createElement("select");
+    stations_missing_an_expected.setAttribute("id", "stations_missing_an_expected");
+    stations_missing_an_expected.setAttribute("value", "Select a station ...");
+    var station = document.createElement("option");
+    station.appendChild(document.createTextNode("Select a station ..."));
+    stations_missing_an_expected.appendChild(station);
+    
+    if (station_data.stations)
+    {
+      for (var i = 0; i < station_data.stations.length; ++i)
+      {
+        var entry = station_data.stations[i];
+        if (entry.stats && Number(entry.stats[0]) > Number(entry.stats[1]))
+        {
+          var station = document.createElement("option");
+          if (entry.name)
+            station.appendChild(document.createTextNode(entry.name));
+          stations_missing_an_expected.appendChild(station);
+        }
+      }
+    }
+    
+    stations_missing_an_expected.addEventListener("change",
+    {
+      handleEvent: closure_use_selected_station(stations_missing_an_expected)
+    }, false);
+    stations_missing_an_expected_form.appendChild(stations_missing_an_expected);
+    station_selection.appendChild(stations_missing_an_expected_form);
+      
+    var xml_node = document.createElement("strong");
+    xml_node.appendChild(document.createTextNode("Stations with an elevator not contained in any route:"));
+    station_selection.appendChild(xml_node);
+  
+    var stations_with_unrouted_form = document.createElement("form");
+    stations_with_unrouted_form.setAttribute("id", "stations_with_unrouted_form");
+    stations_with_unrouted_form.setAttribute("action", "#");
+    var stations_with_unrouted = document.createElement("select");
+    stations_with_unrouted.setAttribute("id", "stations_with_unrouted");
+    stations_with_unrouted.setAttribute("value", "Select a station ...");
+    var station = document.createElement("option");
+    station.appendChild(document.createTextNode("Select a station ..."));
+    stations_with_unrouted.appendChild(station);
+    
+    if (station_data.stations)
+    {
+      for (var i = 0; i < station_data.stations.length; ++i)
+      {
+        var entry = station_data.stations[i];
+        if (entry.stats && Number(entry.stats[1]) > Number(entry.stats[2]))
+        {
+          var station = document.createElement("option");
+          if (entry.name)
+            station.appendChild(document.createTextNode(entry.name));
+          stations_with_unrouted.appendChild(station);
+        }
+      }
+    }
+    
+    stations_with_unrouted.addEventListener("change",
+    {
+      handleEvent: closure_use_selected_station(stations_with_unrouted)
+    }, false);
+    stations_with_unrouted_form.appendChild(stations_with_unrouted);
+    station_selection.appendChild(stations_with_unrouted_form);
+      
+    var xml_node = document.createElement("strong");
+    xml_node.appendChild(document.createTextNode("Stations with defunct elevator:"));
+    station_selection.appendChild(xml_node);
+  
+    var stations_with_defunct_form = document.createElement("form");
+    stations_with_defunct_form.setAttribute("id", "stations_with_defunct_form");
+    stations_with_defunct_form.setAttribute("action", "#");
+    var stations_with_defunct = document.createElement("select");
+    stations_with_defunct.setAttribute("id", "stations_with_defunct");
+    stations_with_defunct.setAttribute("value", "Select a station ...");
+    var station = document.createElement("option");
+    station.appendChild(document.createTextNode("Select a station ..."));
+    stations_with_defunct.appendChild(station);
+    
+    if (station_data.stations)
+    {
+      for (var i = 0; i < station_data.stations.length; ++i)
+      {
+        var entry = station_data.stations[i];
+        if (entry.stats && Number(entry.stats[3]) > 0)
+        {
+          var station = document.createElement("option");
+          if (entry.name)
+            station.appendChild(document.createTextNode(entry.name));
+          stations_with_defunct.appendChild(station);
+        }
+      }
+    }
+    
+    stations_with_defunct.addEventListener("change",
+    {
+      handleEvent: closure_use_selected_station(stations_with_defunct)
+    }, false);
+    stations_with_defunct_form.appendChild(stations_with_defunct);
+    station_selection.appendChild(stations_with_defunct_form);
+  }
+  
+  
+  function add_station_lists(text_area)
+  {
+    var xml_node = document.createElement("div");
+    xml_node.setAttribute("id", "station_selection");
+    xml_node.appendChild(document.createTextNode("Loading station lists ..."));
+    text_area.appendChild(xml_node);
+    
+    function xhreqCallback()
+    {
+      if (this.readyState == 4)
+      {
+        if (this.status == 200)
+          fill_station_lists(JSON.parse(this.responseText));
+        else
+          alert(this.statusText);
+      }
+    }
+          
+    var xhreq = new XMLHttpRequest();
+    if (xhreq == null)
+        alert("Browser not supported (the browser doesn't have XMLHttpRequest). "
+            + "Please use instead e.g. a recent Firefox version.");
+    
+    xhreq.open("GET", "/adam/api/station_stats", true);
+    xhreq.onreadystatechange = xhreqCallback;
+    xhreq.send(null);
   }
   
   

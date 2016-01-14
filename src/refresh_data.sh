@@ -20,6 +20,8 @@ refresh_data()
   else
     rm ../station_$ID/_$DATE
   fi
+  
+  ./matrix --output=stats --id=$ID >../station_$ID/stats.tsv
 };
 
 
