@@ -103,6 +103,65 @@ std::vector< Route_Ref > build_destinations(const Parsing_State& data, const Rou
     }
   }
   
+  double max_lat = -90.0;
+  double min_lat = 90.0;
+  double max_lon = -180.0;
+  double min_lon = 180.0;
+  for (std::vector< Node >::const_iterator it = data.nodes.begin(); it != data.nodes.end(); ++it)
+  {
+    max_lat = std::max(max_lat, it->lat);
+    min_lat = std::min(min_lat, it->lat);
+    max_lon = std::max(max_lon, it->lon);
+    min_lon = std::min(min_lon, it->lon);
+  }
+  
+  Id_Type north_node = 0;
+  Id_Type south_node = 0;
+  Id_Type west_node = 0;
+  Id_Type east_node = 0;
+  for (std::vector< Node >::const_iterator it = data.nodes.begin(); it != data.nodes.end(); ++it)
+  {
+    if (it->lat == max_lat)
+      north_node = it->id;
+    if (it->lat == min_lat)
+      south_node = it->id;
+    if (it->lon == max_lon)
+      east_node = it->id;
+    if (it->lon == min_lon)
+      west_node = it->id;
+  }
+  
+  for (std::vector< Way >::const_iterator it = data.ways.begin(); it != data.ways.end(); ++it)
+  {
+    for (std::vector< Id_Type >::const_iterator nds_it = it->nds.begin(); nds_it != it->nds.end(); ++nds_it)
+    { 
+      if (*nds_it == north_node)
+      {
+        Way_Reference ref(*it, std::distance(it->nds.begin(), nds_it), data);
+        result.push_back(Route_Ref(routing_data, ref, "northern perimeter", data));	
+	north_node = 0;
+      }
+      if (*nds_it == south_node)
+      {
+        Way_Reference ref(*it, std::distance(it->nds.begin(), nds_it), data);
+        result.push_back(Route_Ref(routing_data, ref, "southern perimeter", data));	
+	south_node = 0;
+      }
+      if (*nds_it == east_node)
+      {
+        Way_Reference ref(*it, std::distance(it->nds.begin(), nds_it), data);
+        result.push_back(Route_Ref(routing_data, ref, "eastern perimeter", data));	
+	east_node = 0;
+      }
+      if (*nds_it == west_node)
+      {
+        Way_Reference ref(*it, std::distance(it->nds.begin(), nds_it), data);
+        result.push_back(Route_Ref(routing_data, ref, "western perimeter", data));	
+	west_node = 0;
+      }
+    }
+  }  
+  
   return result;
 }
 

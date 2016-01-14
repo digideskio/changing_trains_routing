@@ -30,6 +30,7 @@ struct Geometry
 
 struct Way_Reference
 {
+  Way_Reference(const Way& way, unsigned int index, const Parsing_State& data);
   Way_Reference(const Way& way, const Coord& point, const Parsing_State& data);
   Way_Reference(const Relation& relation, const Coord& point, const Parsing_State& data);
   

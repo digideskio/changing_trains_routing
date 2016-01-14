@@ -105,6 +105,11 @@ std::pair< double, double > distance_and_offset(const Coord& start, const Coord&
 }
 
 
+Way_Reference::Way_Reference(const Way& way, unsigned int index_, const Parsing_State& data)
+  : way_ref(way.id), index(index_), pos(0)
+{}
+
+
 Way_Reference::Way_Reference(const Way& way, const Coord& point, const Parsing_State& data)
 {
   double min_distance = 180.0;
