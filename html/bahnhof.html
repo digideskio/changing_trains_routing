@@ -21,6 +21,41 @@
   }
   
   
+  function closure_overview()
+  {
+    function handler(event)
+    {
+      DrawLatLonMarkers.clear_map();
+      var text_area = document.getElementById("textual_results");
+      if (text_area)
+      {
+        while (text_area.hasChildNodes())
+          text_area.removeChild(text_area.lastChild);
+      
+        add_legend(text_area);
+        text_area.appendChild(document.createElement("br"));
+        text_area.appendChild(document.createElement("br"));
+        add_station_lists(text_area);
+      }
+    }
+      
+    return handler;
+  }
+  
+  
+  function add_uplink(text_area)
+  {
+    var xml_node = document.createElement("a");
+    xml_node.setAttribute("href", "#");
+    xml_node.appendChild(document.createTextNode("Overview"));
+    xml_node.addEventListener("click",
+    {
+      handleEvent: closure_overview()
+    }, false);
+    text_area.appendChild(xml_node);      
+  }
+  
+  
   function add_legend(text_area)
   {
     var xml_node = document.createElement("a");
@@ -357,6 +392,8 @@
       text_area.removeChild(text_area.lastChild);
       
     add_legend(text_area);
+    text_area.appendChild(document.createTextNode(" - "));
+    add_uplink(text_area);
     
     if (station.timestamp)
     {
