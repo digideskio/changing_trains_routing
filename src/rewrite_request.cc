@@ -39,7 +39,7 @@ int main(int argc, char* args[])
   std::string name;
   std::string area;
 
-  if (fuzzing_level == 1)
+  if (fuzzing_level == 1 || fuzzing_level == 101)
   {
     if (input[input.size()-1] == ')')
     {
@@ -76,7 +76,12 @@ int main(int argc, char* args[])
     }
   }
 
-  name = fuzz_name(input);
+  if (fuzzing_level == 100)
+    name = args[2];
+  else if (fuzzing_level == 101)
+    name = args[3];
+  else
+    name = fuzz_name(input);
   area = fuzz_name(area);
   
   std::string::size_type pos = name.find(".*hbf");
@@ -105,7 +110,7 @@ int main(int argc, char* args[])
       pos = buffer.find("{{name}}", pos + 8 - name.size());
     }
 
-    if (fuzzing_level == 1)
+    if (fuzzing_level == 1 || fuzzing_level == 101)
     {
       if (area == "")
       {

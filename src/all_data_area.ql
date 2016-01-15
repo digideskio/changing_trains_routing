@@ -1,11 +1,11 @@
 area[name~"{{area}}",i]->.a;
-node(area.a)[name~"{{name}}",i][railway~"^(stop|halt|station)$"]->.stop;
+node(area.a)[name="{{name}}"][railway~"^(stop|halt|station)$"]->.stop;
 ( way[railway=platform](around.stop:100)[bus!~yes];
   way[public_transport=platform](around.stop:100)[bus!~yes];
   rel[railway=platform](around.stop:100)[bus!~yes];
   rel[public_transport=platform](around.stop:100)[bus!~yes];
-  way[railway=platform](area.a)[name~"{{name}}",i];
-  rel[railway=platform](area.a)[name~"{{name}}",i]; );
+  way[railway=platform](area.a)[name="{{name}}"];
+  rel[railway=platform](area.a)[name="{{name}}"]; );
 (._;node[highway](around:100)->.n;way[highway](around:100););
 (._;>;);
 out geom;
