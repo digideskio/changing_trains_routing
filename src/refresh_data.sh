@@ -17,8 +17,10 @@ refresh_data()
     wget -nv --post-file=../station_$ID/request_nodes_1.ql -O ../station_$ID/_$DATE http://overpass-api.de/api/interpreter
     cat ../station_$ID/_$DATE | awk '{ if (result == "" || length(result) > length($0)) result = $0; } END { if (result != "") print result; }' >../station_$ID/osm_name.txt
     
-    ./rewrite_request 101 "`cat ../station_$ID/name.txt`" "`cat ../station_$ID/osm_name.txt`" <all_data_area.ql >../station_$ID/request_1.ql
-    wget -nv --post-file=../station_$ID/request_1.ql -O ../station_$ID/_$DATE http://overpass-api.de/api/interpreter    
+    if [[ -s ../station_$ID/osm_name.txt ]]; then
+      ./rewrite_request 101 "`cat ../station_$ID/name.txt`" "`cat ../station_$ID/osm_name.txt`" <all_data_area.ql >../station_$ID/request_1.ql
+      wget -nv --post-file=../station_$ID/request_1.ql -O ../station_$ID/_$DATE http://overpass-api.de/api/interpreter    
+    fi
   fi
 
   FILESIZE=`stat -c '%s' ../station_$ID/_$DATE`
@@ -26,6 +28,7 @@ refresh_data()
     mv ../station_$ID/_$DATE ../station_$ID/data.osm
   else
     rm ../station_$ID/_$DATE
+    touch ../station_$ID/data.osm
   fi
   
   ./matrix --output=stats --id=$ID >../station_$ID/stats.tsv
